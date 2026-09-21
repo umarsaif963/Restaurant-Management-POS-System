@@ -1,14 +1,30 @@
 import { NavLink } from 'react-router-dom';
 import { X, UtensilsCrossed } from 'lucide-react';
-import { APP_NAME, APP_VERSION, NAV_SECTIONS } from '@/constants/routes';
+import type { UserRole } from '@restaurant/shared';
+import { APP_NAME, APP_VERSION, NAV_SECTIONS, type NavSection } from '@/constants/routes';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { closeSidebar } from '@/store/slices/uiSlice';
 
 const ENV_LABEL = import.meta.env.DEV ? 'Development' : 'Production';
 
+function visibleSections(userRoles?: UserRole[]): NavSection[] {
+  return NAV_SECTIONS.filter(
+    (section) => !section.roles || section.roles.some((role) => userRoles?.includes(role)),
+  )
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.roles || item.roles.some((role) => userRoles?.includes(role)),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
 export function Sidebar() {
   const dispatch = useAppDispatch();
   const sidebarOpen = useAppSelector((state) => state.ui.sidebarOpen);
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const sections = visibleSections(currentUser ? [currentUser.role] : undefined);
 
   const handleNavigate = () => {
     dispatch(closeSidebar());
@@ -50,7 +66,7 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
-          {NAV_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <div key={section.title}>
               <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 {section.title}

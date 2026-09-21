@@ -1,19 +1,43 @@
-import { useLocation } from 'react-router-dom';
-import { Menu } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { LogOut, Menu } from 'lucide-react';
 import { APP_NAME, NAV_SECTIONS } from '@/constants/routes';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toggleSidebar } from '@/store/slices/uiSlice';
+import { useLogoutMutation } from '@/store/api/authApi';
 import { Badge } from '@/components/ui/Badge';
+import { Spinner } from '@/components/ui/Spinner';
+import { ROLE_LABELS } from '@/constants/user';
 
 const ENV_LABEL = import.meta.env.DEV ? 'Development' : 'Production';
 
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
 export function Topbar() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const location = useLocation();
+  const user = useAppSelector((state) => state.auth.user);
+  const [logout, { isLoading: loggingOut }] = useLogoutMutation();
 
   const activeItem = NAV_SECTIONS.flatMap((section) => section.items).find((item) =>
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),
   );
+
+  async function handleLogout() {
+    try {
+      await logout().unwrap();
+    } catch {
+      // local state is cleared regardless so the user can sign back in
+    }
+    navigate('/login', { replace: true });
+  }
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6">
@@ -34,7 +58,30 @@ export function Topbar() {
         </div>
       </div>
 
-      <Badge variant={import.meta.env.DEV ? 'blue' : 'green'}>{ENV_LABEL}</Badge>
+      <div className="flex items-center gap-3">
+        <Badge variant={import.meta.env.DEV ? 'blue' : 'green'}>{ENV_LABEL}</Badge>
+        {user && (
+          <div className="hidden items-center gap-2 sm:flex">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
+              {initials(user.name)}
+            </span>
+            <div className="leading-tight">
+              <p className="text-sm font-medium text-slate-800">{user.name}</p>
+              <p className="text-[11px] text-slate-500">{ROLE_LABELS[user.role]}</p>
+            </div>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+          title="Sign out"
+          disabled={loggingOut}
+        >
+          {loggingOut ? <Spinner className="h-4 w-4" /> : <LogOut className="h-4 w-4" />}
+          <span className="hidden md:inline">Sign out</span>
+        </button>
+      </div>
     </header>
   );
 }

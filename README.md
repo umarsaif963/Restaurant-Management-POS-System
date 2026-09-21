@@ -5,9 +5,10 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–2 complete — project setup/architecture and the full
-PostgreSQL database (schema, migration, seed). Every later module builds on the
-Prisma schema.
+**Status:** Modules 1–3 complete — project setup/architecture, the full
+PostgreSQL database (schema, migration, seed), and Authentication, Authorization
+&amp; user/role management (login, sessions, password reset). Every later module
+builds on the Prisma schema.
 
 ---
 
@@ -88,9 +89,14 @@ cp client/.env.example client/.env   # client settings
 | `PORT` | API port | `4000` |
 | `SERVER_URL` | Public API URL | `http://localhost:4000` |
 | `CLIENT_URL` | Allowed CORS origin | `http://localhost:5173` |
-| `DATABASE_URL` | PostgreSQL connection string (Phase 2+) | — |
-| `JWT_SECRET` | Access-token secret (Phase 3+) | — |
-| `JWT_REFRESH_SECRET` | Refresh-token secret (Phase 3+) | — |
+| `DATABASE_URL` | PostgreSQL connection string | — |
+| `JWT_SECRET` | Access-token secret (min 16 chars) | — |
+| `JWT_REFRESH_SECRET` | Refresh-token secret (min 16 chars) | — |
+| `JWT_ACCESS_EXPIRES_IN` | Access-token lifetime | `15m` |
+| `JWT_REFRESH_EXPIRES_IN` | Refresh session lifetime | `7d` |
+| `PASSWORD_RESET_EXPIRES_IN` | Reset-token lifetime | `30m` |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Outbound mail (reset links); falls back to console in dev | — |
+| `MAIL_FROM` | From address for reset emails | — |
 
 The API validates all environment variables with Zod at boot and exits with a
 clear error report if any are invalid.
@@ -154,12 +160,13 @@ npm run prisma:studio          # browse data in a GUI
 
 ### What the migration creates
 
-PostgreSQL enums + 18 tables: `Restaurant`, `RestaurantSettings`, `User`,
-`TableSection`, `RestaurantTable`, `Customer`, `MenuCategory`, `MenuItem`,
-`MenuItemVariation`, `AddOn`, `Order`, `OrderItem`, `Payment`, `KitchenOrder`,
-`KitchenOrderItem`, `Reservation`, `InventoryItem`, `InventoryTransaction`,
-`Recipe`, `RecipeIngredient`, `Supplier`, `Purchase`, `PurchaseItem`,
-`AuditLog` — with FKs, unique constraints, and indexes on lookup columns.
+PostgreSQL enums + tables: `Restaurant`, `RestaurantSettings`, `User`,
+`Session`, `PasswordResetToken` (auth) plus `TableSection`, `RestaurantTable`,
+`Customer`, `MenuCategory`, `MenuItem`, `MenuItemVariation`, `AddOn`, `Order`,
+`OrderItem`, `Payment`, `KitchenOrder`, `KitchenOrderItem`, `Reservation`,
+`InventoryItem`, `InventoryTransaction`, `Recipe`, `RecipeIngredient`,
+`Supplier`, `Purchase`, `PurchaseItem`, `AuditLog` — with FKs, unique
+constraints, and indexes on lookup columns.
 
 ### Demo credentials (development only)
 
@@ -180,6 +187,21 @@ Base path: `/api/v1`
 | Endpoint | Description |
 | --- | --- |
 | `GET /api/v1/health` | Service health, uptime, environment, live DB connectivity |
+| `POST /api/v1/auth/login` | Sign in with email + password (sets HTTP-only cookies) |
+| `POST /api/v1/auth/refresh` | Rotate the refresh session; reissue access token |
+| `POST /api/v1/auth/logout` | Revoke the current session and clear cookies |
+| `GET /api/v1/auth/me` | Current signed-in user |
+| `POST /api/v1/auth/change-password` | Change password (requires current password) |
+| `POST /api/v1/auth/register` | Create accounts (MANAGER/ADMIN only) |
+| `POST /api/v1/auth/forgot-password` | Request a password-reset link |
+| `POST /api/v1/auth/reset-password` | Reset the password with a reset token |
+| `GET /api/v1/users` | List/search users with role-status filters + pagination |
+| `POST /api/v1/users` | Create a user (MANAGER/ADMIN) |
+| `PATCH /api/v1/users/:id` | Update a user (MANAGER/ADMIN) |
+| `DELETE /api/v1/users/:id` | Deactivate a user + revoke sessions (MANAGER/ADMIN) |
+
+> In development, `forgot-password` prints the reset link to the **server
+> console** instead of sending email (SMTP is optional).
 
 All responses use a consistent envelope:
 
@@ -230,17 +252,22 @@ docker compose -f docker-compose.prod.yml up --build
 
 ---
 
-## Security Baseline (Modules 1–2)
+## Security Baseline (Modules 1–3)
 
 - Helmet security headers
 - CORS restricted to `CLIENT_URL` with credentials
-- Rate limiting on the API base path (`300 req / 15 min / IP`)
+- Rate limiting (`300 req / 15 min / IP`; tighter limits on password endpoints)
 - Zod-validated environment variables
 - Centralized error handling — no stack traces / DB details leaked
 - Passwords hashed with bcrypt (12 rounds, `$2b$` format)
 - Prisma parameterized queries (no raw SQL injection surface)
-- HTTP-only cookie auth, JWT, role-based authorization arrive in the
-  Authentication + Authorization modules
+- **JWT access tokens (15 min) + rotating refresh sessions in HTTP-only,
+  path-scoped cookies; sessions revocable server-side via a `Session` table**
+- **Role-based access control (ADMIN / MANAGER / CASHIER / WAITER /
+  KITCHEN_STAFF) enforced on every protected route**
+- **Soft-deactivate accounts (status `INACTIVE`) revokes all sessions**
+- **Hashed, single-use password-reset tokens with short expiry (30 min)**
+- **Generic 401s / always-200 forgot-password (no account enumeration)**
 
 ---
 
@@ -248,7 +275,7 @@ docker compose -f docker-compose.prod.yml up --build
 
 1. ✅ **Project Setup & Architecture** — monorepo, tooling, connectivity
 2. ✅ **Database Schema, Migrations & Seed** — complete Prisma schema, initial migration, demo data
-3. Authentication + Authorization (JWT, roles, users)
+3. ✅ **Authentication + Authorization** — JWT/refresh sessions, roles, user management, password reset
 4. Restaurant settings, tables, customers
 5. Menu categories, items, add-ons, variations
 6. POS / order creation + order management

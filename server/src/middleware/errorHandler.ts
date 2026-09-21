@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 import { ApiError } from '../utils/ApiError.js';
 import { logger } from '../utils/logger.js';
 
@@ -31,6 +32,23 @@ export function errorHandler(
     }
     res.status(err.statusCode).json(body);
     return;
+  }
+
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err.code === 'P2002') {
+      const target = Array.isArray(err.meta?.target)
+        ? (err.meta.target as string[]).join(', ')
+        : 'value';
+      res.status(409).json({
+        success: false,
+        message: `A record with the same ${target} already exists`,
+      });
+      return;
+    }
+    if (err.code === 'P2025') {
+      res.status(404).json({ success: false, message: 'Resource not found' });
+      return;
+    }
   }
 
   if (err instanceof Error) {

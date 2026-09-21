@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
 import routes from './routes/index.js';
@@ -25,6 +26,7 @@ app.use(
 );
 
 app.use(express.json({ limit: '1mb' }));
+app.use(cookieParser());
 
 app.use(
   '/api',
