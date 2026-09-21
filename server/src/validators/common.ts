@@ -34,3 +34,15 @@ export const optionalPhoneSchema = z
   .max(30, 'Phone must be at most 30 characters')
   .transform((value) => (value === '' ? null : value))
   .optional();
+
+/**
+ * Shared route param for any `:id` — cuid values are 25 chars.
+ */
+export const idSchema = z
+  .string()
+  .min(1, 'Identifier is required')
+  .max(64, 'Identifier is too long');
+
+export const resourceIdParamsSchema = z.object({
+  id: idSchema,
+});

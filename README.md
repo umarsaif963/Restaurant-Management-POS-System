@@ -5,10 +5,10 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–3 complete — project setup/architecture, the full
-PostgreSQL database (schema, migration, seed), and Authentication, Authorization
-&amp; user/role management (login, sessions, password reset). Every later module
-builds on the Prisma schema.
+**Status:** Modules 1–4 complete — project setup/architecture, the full
+PostgreSQL database (schema, migration, seed), Authentication, Authorization
+&amp; user/role management, and restaurant settings, table sections/floor plan,
+and customer management. Every later module builds on the Prisma schema.
 
 ---
 
@@ -199,6 +199,20 @@ Base path: `/api/v1`
 | `POST /api/v1/users` | Create a user (MANAGER/ADMIN) |
 | `PATCH /api/v1/users/:id` | Update a user (MANAGER/ADMIN) |
 | `DELETE /api/v1/users/:id` | Deactivate a user + revoke sessions (MANAGER/ADMIN) |
+| `GET /api/v1/settings` | Restaurant profile + settings + opening hours (authenticated) |
+| `PATCH /api/v1/settings` | Update restaurant/settings/opening-hours (MANAGER/ADMIN) |
+| `GET /api/v1/tables/sections` | Table sections with table counts (authenticated) |
+| `POST /api/v1/tables/sections` | Create a section (MANAGER/ADMIN) |
+| `PATCH /api/v1/tables/sections/:id` | Update a section (MANAGER/ADMIN) |
+| `DELETE /api/v1/tables/sections/:id` | Delete an empty section (MANAGER/ADMIN) |
+| `GET /api/v1/tables` | List tables, filter by section/status (authenticated) |
+| `POST /api/v1/tables` | Create a table (MANAGER/ADMIN) |
+| `PATCH /api/v1/tables/:id` | Update a table (MANAGER/ADMIN) |
+| `DELETE /api/v1/tables/:id` | Delete a table with no order history (MANAGER/ADMIN) |
+| `GET /api/v1/customers` | List/search customers with pagination (ADMIN/MANAGER/CASHIER/WAITER) |
+| `POST /api/v1/customers` | Create a customer (ADMIN/MANAGER/CASHIER/WAITER) |
+| `PATCH /api/v1/customers/:id` | Update a customer (MANAGER/ADMIN) |
+| `DELETE /api/v1/customers/:id` | Delete a customer (MANAGER/ADMIN) |
 
 > In development, `forgot-password` prints the reset link to the **server
 > console** instead of sending email (SMTP is optional).
@@ -252,7 +266,7 @@ docker compose -f docker-compose.prod.yml up --build
 
 ---
 
-## Security Baseline (Modules 1–3)
+## Security Baseline (Modules 1–4)
 
 - Helmet security headers
 - CORS restricted to `CLIENT_URL` with credentials
@@ -276,7 +290,7 @@ docker compose -f docker-compose.prod.yml up --build
 1. ✅ **Project Setup & Architecture** — monorepo, tooling, connectivity
 2. ✅ **Database Schema, Migrations & Seed** — complete Prisma schema, initial migration, demo data
 3. ✅ **Authentication + Authorization** — JWT/refresh sessions, roles, user management, password reset
-4. Restaurant settings, tables, customers
+4. ✅ **Restaurant Settings, Tables & Customers** — restaurant profile/opening hours, floor plan, customer directory
 5. Menu categories, items, add-ons, variations
 6. POS / order creation + order management
 7. Customer receipts, kitchen tickets, printing

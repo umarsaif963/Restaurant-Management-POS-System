@@ -5,6 +5,9 @@ import { RoleGuard } from '@/components/auth/RoleGuard';
 import { SystemStatusPage } from '@/pages/SystemStatusPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { SettingsPage } from '@/pages/SettingsPage';
+import { TablesPage } from '@/pages/TablesPage';
+import { CustomersPage } from '@/pages/CustomersPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
@@ -40,10 +43,30 @@ export const router = createBrowserRouter([
         element: <ProfilePage />,
       },
       {
+        path: 'tables',
+        element: <TablesPage />,
+      },
+      {
+        path: 'customers',
+        element: (
+          <RoleGuard roles={['ADMIN', 'MANAGER', 'CASHIER', 'WAITER']}>
+            <CustomersPage />
+          </RoleGuard>
+        ),
+      },
+      {
         path: 'users',
         element: (
           <RoleGuard roles={['ADMIN', 'MANAGER']}>
             <UsersPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: 'settings',
+        element: (
+          <RoleGuard roles={['ADMIN', 'MANAGER']}>
+            <SettingsPage />
           </RoleGuard>
         ),
       },

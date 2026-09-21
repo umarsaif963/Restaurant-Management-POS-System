@@ -1,4 +1,4 @@
-import { Activity, UserRound, Users, type LucideIcon } from 'lucide-react';
+import { Activity, LayoutGrid, Settings, UserRound, Users, type LucideIcon } from 'lucide-react';
 import type { UserRole } from '@restaurant/shared';
 
 export const APP_NAME = 'Restaurant POS';
@@ -42,6 +42,22 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: 'Operations',
+    items: [
+      {
+        label: 'Tables',
+        to: '/tables',
+        icon: LayoutGrid,
+      },
+      {
+        label: 'Customers',
+        to: '/customers',
+        icon: Users,
+        roles: ['ADMIN', 'MANAGER', 'CASHIER', 'WAITER'],
+      },
+    ],
+  },
+  {
     title: 'Administration',
     roles: ['ADMIN', 'MANAGER'],
     items: [
@@ -49,6 +65,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Users',
         to: '/users',
         icon: Users,
+        roles: ['ADMIN', 'MANAGER'],
+      },
+      {
+        label: 'Settings',
+        to: '/settings',
+        icon: Settings,
         roles: ['ADMIN', 'MANAGER'],
       },
     ],

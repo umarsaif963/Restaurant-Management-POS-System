@@ -263,6 +263,67 @@ const CAPACITY_BY_TABLE: Record<number, number> = {
   1: 2, 2: 2, 3: 4, 4: 4, 5: 4, 6: 6, 7: 2, 8: 2, 9: 8, 10: 8,
 };
 
+/** Demo statuses so the floor plan (module 4) shows variety. */
+const STATUS_BY_TABLE: Partial<Record<number, 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING'>> = {
+  3: 'OCCUPIED',
+  7: 'CLEANING',
+  9: 'RESERVED',
+};
+
+interface SeedCustomer {
+  name: string;
+  phone: string;
+  email: string;
+  address?: string;
+  notes?: string;
+  totalOrders?: number;
+  totalSpending?: string;
+}
+
+const CUSTOMERS: SeedCustomer[] = [
+  {
+    name: 'Alice Johnson',
+    phone: '+1 555 010 1001',
+    email: 'alice.johnson@example.com',
+    address: '12 Oak Avenue, Downtown',
+    notes: 'Prefers window seats',
+    totalOrders: 12,
+    totalSpending: '248.50',
+  },
+  {
+    name: 'Bob Martinez',
+    phone: '+1 555 010 1002',
+    email: 'bob.martinez@example.com',
+    address: '34 Maple Road',
+    notes: 'Allergic to peanuts',
+    totalOrders: 7,
+    totalSpending: '132.00',
+  },
+  {
+    name: 'Carol Nguyen',
+    phone: '+1 555 010 1003',
+    email: 'carol.nguyen@example.com',
+    totalOrders: 5,
+    totalSpending: '96.00',
+  },
+  {
+    name: 'David Kim',
+    phone: '+1 555 010 1004',
+    email: 'david.kim@example.com',
+    address: '78 Cedar Lane',
+    notes: 'Regular lunch customer',
+    totalOrders: 18,
+    totalSpending: '410.75',
+  },
+  {
+    name: 'Emma Wilson',
+    phone: '+1 555 010 1005',
+    email: 'emma.wilson@example.com',
+    totalOrders: 2,
+    totalSpending: '38.75',
+  },
+];
+
 interface SeedInventoryItem {
   name: string;
   sku: string;
@@ -393,10 +454,27 @@ async function main(): Promise<void> {
           name: `Table ${String(tableNumber).padStart(2, '0')}`,
           capacity: CAPACITY_BY_TABLE[tableNumber] ?? 4,
           sectionId: sectionRecord.id,
+          status: STATUS_BY_TABLE[tableNumber] ?? 'AVAILABLE',
         },
       });
     }
   }
+
+  await Promise.all(
+    CUSTOMERS.map((customer) =>
+      prisma.customer.create({
+        data: {
+          name: customer.name,
+          phone: customer.phone,
+          email: customer.email,
+          address: customer.address ?? null,
+          notes: customer.notes ?? null,
+          totalOrders: customer.totalOrders ?? 0,
+          totalSpending: customer.totalSpending ?? '0',
+        },
+      }),
+    ),
+  );
 
   const categoryRecords = new Map<string, string>();
   for (const category of CATEGORIES) {
@@ -452,6 +530,7 @@ async function main(): Promise<void> {
     prisma.restaurantTable.count(),
     prisma.tableSection.count(),
     prisma.inventoryItem.count(),
+    prisma.customer.count(),
   ]);
 
   // eslint-disable-next-line no-console
@@ -461,7 +540,7 @@ async function main(): Promise<void> {
   // eslint-disable-next-line no-console
   console.log(`  users: ${counts[0]}, categories: ${counts[1]}, menu items: ${counts[2]}, variations: ${counts[3]}, add-ons: ${counts[4]}`);
   // eslint-disable-next-line no-console
-  console.log(`  tables: ${counts[5]}, sections: ${counts[6]}, inventory items: ${counts[7]}`);
+  console.log(`  tables: ${counts[5]}, sections: ${counts[6]}, inventory items: ${counts[7]}, customers: ${counts[8]}`);
 }
 
 main()

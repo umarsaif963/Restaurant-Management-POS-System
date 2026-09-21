@@ -113,3 +113,159 @@ export interface ListUsersQuery {
   role?: UserRole;
   status?: UserStatus;
 }
+
+// ---------------------------------------------------------------------------
+// Restaurant settings, tables & customers (module 4)
+// ---------------------------------------------------------------------------
+
+// ---- Tables -------------------------------------------------
+
+export const TABLE_STATUSES = ['AVAILABLE', 'OCCUPIED', 'RESERVED', 'CLEANING'] as const;
+export type TableStatus = (typeof TABLE_STATUSES)[number];
+
+export interface TableSectionProfile {
+  id: string;
+  name: string;
+  position: number;
+  tableCount: number;
+}
+
+export interface CreateTableSectionInput {
+  name: string;
+  position?: number;
+}
+
+export interface UpdateTableSectionInput {
+  name?: string;
+  position?: number;
+}
+
+export interface RestaurantTableProfile {
+  id: string;
+  tableNumber: number;
+  name: string | null;
+  capacity: number;
+  sectionId: string | null;
+  sectionName: string | null;
+  status: TableStatus;
+  qrCodeUrl: string | null;
+}
+
+export interface CreateTableInput {
+  tableNumber: number;
+  name?: string | null;
+  capacity?: number;
+  sectionId?: string | null;
+}
+
+export interface UpdateTableInput {
+  tableNumber?: number;
+  name?: string | null;
+  capacity?: number;
+  sectionId?: string | null;
+  status?: TableStatus;
+}
+
+export interface ListTablesQuery {
+  status?: TableStatus;
+  sectionId?: string;
+}
+
+// ---- Settings ------------------------------------------------
+
+export interface RestaurantProfile {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  currency: string;
+  taxPercentage: string;
+  serviceChargePct: string;
+  isActive: boolean;
+}
+
+export interface RestaurantSettingsProfile {
+  id: string;
+  currency: string;
+  taxPercentage: string;
+  serviceChargePct: string;
+  receiptHeader: string | null;
+  receiptFooter: string | null;
+  orderNumberPrefix: string;
+  orderNumberStart: number;
+  openingHours: Record<string, string> | null;
+  showTaxOnReceipt: boolean;
+  showServiceChargeOnReceipt: boolean;
+}
+
+export interface SettingsView {
+  restaurant: RestaurantProfile;
+  settings: RestaurantSettingsProfile;
+}
+
+export interface UpdateRestaurantInput {
+  name?: string;
+  logoUrl?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  currency?: string;
+  taxPercentage?: string;
+  serviceChargePct?: string;
+}
+
+export interface UpdateRestaurantSettingsInput {
+  currency?: string;
+  taxPercentage?: string;
+  serviceChargePct?: string;
+  receiptHeader?: string | null;
+  receiptFooter?: string | null;
+  orderNumberPrefix?: string;
+  showTaxOnReceipt?: boolean;
+  showServiceChargeOnReceipt?: boolean;
+  openingHours?: Record<string, string> | null;
+}
+
+export interface UpdateSettingsInput {
+  restaurant?: UpdateRestaurantInput;
+  settings?: UpdateRestaurantSettingsInput;
+}
+
+// ---- Customers -----------------------------------------------
+
+export interface CustomerProfile {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+  totalOrders: number;
+  totalSpending: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCustomerInput {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateCustomerInput {
+  name?: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}
+
+export interface ListCustomersQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
