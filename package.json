@@ -1,0 +1,29 @@
+{
+  "name": "restaurant-management-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-ready Restaurant Management & POS System",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @restaurant/shared",
+    "dev": "npm run build:shared && concurrently -n server,client -c blue,green \"npm run dev -w @restaurant/server\" \"npm run dev -w @restaurant/client\"",
+    "dev:server": "npm run build:shared && npm run dev -w @restaurant/server",
+    "dev:client": "npm run build:shared && npm run dev -w @restaurant/client",
+    "build": "npm run build:shared && npm run build -w @restaurant/server && npm run build -w @restaurant/client",
+    "start": "npm run start -w @restaurant/server",
+    "typecheck": "npm run build:shared && npm run typecheck -w @restaurant/shared && npm run typecheck -w @restaurant/server && npm run typecheck -w @restaurant/client",
+    "lint": "npm run lint -w @restaurant/shared && npm run lint -w @restaurant/server && npm run lint -w @restaurant/client",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.4.2"
+  }
+}
