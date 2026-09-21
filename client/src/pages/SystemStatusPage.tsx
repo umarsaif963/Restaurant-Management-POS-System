@@ -11,6 +11,13 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatDateTime, formatUptime } from '@/utils/format';
 
+const DATABASE_LABELS: Record<string, string> = {
+  connected: 'Connected',
+  unreachable: 'Unreachable',
+  configured: 'Configured',
+  'not-configured': 'Not configured',
+};
+
 function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4 py-2">
@@ -86,7 +93,7 @@ export function SystemStatusPage() {
               <InfoRow label="Version" value={data.version} />
               <InfoRow label="Environment" value={data.environment} />
               <InfoRow label="Uptime" value={formatUptime(data.uptime)} />
-              <InfoRow label="Database" value={data.database} />
+              <InfoRow label="Database" value={DATABASE_LABELS[data.database] ?? data.database} />
               <InfoRow label="Last checked" value={formatDateTime(data.timestamp)} />
             </div>
           )}

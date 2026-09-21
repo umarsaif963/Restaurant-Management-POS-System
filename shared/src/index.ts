@@ -27,5 +27,5 @@ export interface HealthResponse {
   environment: Environment;
   uptime: number;
   timestamp: string;
-  database: 'configured' | 'not-configured';
+  database: 'connected' | 'unreachable' | 'configured' | 'not-configured';
 }

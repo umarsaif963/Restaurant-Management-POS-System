@@ -5,9 +5,9 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Module 1 complete — project setup, monorepo architecture, and live
-frontend ↔ backend connectivity (REST + Socket.IO). Database schema, seeding,
-and all business modules are built incrementally in later modules.
+**Status:** Modules 1–2 complete — project setup/architecture and the full
+PostgreSQL database (schema, migration, seed). Every later module builds on the
+Prisma schema.
 
 ---
 
@@ -109,9 +109,67 @@ clear error report if any are invalid.
 | `npm run typecheck` | Type-check all workspaces |
 | `npm run lint` | ESLint all workspaces |
 | `npm run format` | Prettier (write) |
+| `npm run prisma:generate` | Regenerate Prisma Client |
+| `npm run prisma:migrate` | Create/apply a dev migration (`-- --name <name>`) |
+| `npm run prisma:migrate:deploy` | Apply migrations in production |
+| `npm run prisma:seed` | Seed the database (idempotent) |
+| `npm run prisma:studio` | Open Prisma Studio |
+| `npm run prisma:reset` | Drop, re-migrate, and re-seed the dev DB |
 
 Workspace-scoped equivalents: `npm run dev -w @restaurant/server`,
 `npm run build -w @restaurant/client`, etc.
+
+---
+
+## Database (PostgreSQL + Prisma)
+
+Schema lives in `server/prisma/schema.prisma`, migrations in
+`server/prisma/migrations`, and the demo dataset in `server/prisma/seed.ts`.
+
+### Requirements
+
+A running PostgreSQL server (local install or Docker):
+
+```bash
+docker compose up -d postgres   # if using Docker (Postgres 16 on :5432)
+```
+
+Create `server/.env` from `server/.env.example` and set `DATABASE_URL`, e.g.:
+
+```
+DATABASE_URL=postgresql://postgres:admin@localhost:5432/restaurant_db
+```
+
+### Commands
+
+```bash
+npm run prisma:generate        # generate Prisma Client
+npm run prisma:migrate -- --name init         # create & apply a migration
+npm run prisma:migrate:deploy  # non-interactive apply (CI/prod)
+npm run prisma:seed            # seed demo data (idempotent)
+npm run prisma:studio          # browse data in a GUI
+```
+
+> `prisma migrate dev` automatically regenerates the client and runs the seed.
+
+### What the migration creates
+
+PostgreSQL enums + 18 tables: `Restaurant`, `RestaurantSettings`, `User`,
+`TableSection`, `RestaurantTable`, `Customer`, `MenuCategory`, `MenuItem`,
+`MenuItemVariation`, `AddOn`, `Order`, `OrderItem`, `Payment`, `KitchenOrder`,
+`KitchenOrderItem`, `Reservation`, `InventoryItem`, `InventoryTransaction`,
+`Recipe`, `RecipeIngredient`, `Supplier`, `Purchase`, `PurchaseItem`,
+`AuditLog` — with FKs, unique constraints, and indexes on lookup columns.
+
+### Demo credentials (development only)
+
+| Role | Email | Password |
+| --- | --- | --- |
+| ADMIN | `admin@restaurant.com` | `Admin@123` |
+| MANAGER | `manager@restaurant.com` | `Manager@123` |
+| CASHIER | `cashier@restaurant.com` | `Cashier@123` |
+| WAITER | `waiter@restaurant.com` | `Waiter@123` |
+| KITCHEN_STAFF | `kitchen@restaurant.com` | `Kitchen@123` |
 
 ---
 
@@ -121,7 +179,7 @@ Base path: `/api/v1`
 
 | Endpoint | Description |
 | --- | --- |
-| `GET /api/v1/health` | Service health, uptime, environment, DB config status |
+| `GET /api/v1/health` | Service health, uptime, environment, live DB connectivity |
 
 All responses use a consistent envelope:
 
@@ -172,22 +230,24 @@ docker compose -f docker-compose.prod.yml up --build
 
 ---
 
-## Security Baseline (Module 1)
+## Security Baseline (Modules 1–2)
 
 - Helmet security headers
 - CORS restricted to `CLIENT_URL` with credentials
 - Rate limiting on the API base path (`300 req / 15 min / IP`)
 - Zod-validated environment variables
 - Centralized error handling — no stack traces / DB details leaked
-- HTTP-only cookie auth, JWT, bcrypt, role-based authorization arrive in the
+- Passwords hashed with bcrypt (12 rounds, `$2b$` format)
+- Prisma parameterized queries (no raw SQL injection surface)
+- HTTP-only cookie auth, JWT, role-based authorization arrive in the
   Authentication + Authorization modules
 
 ---
 
 ## Development Roadmap (Module Order)
 
-1. ✅ **Project Setup & Architecture** — monorepo, tooling, connectivity (this module)
-2. Prisma schema, migrations, seed data
+1. ✅ **Project Setup & Architecture** — monorepo, tooling, connectivity
+2. ✅ **Database Schema, Migrations & Seed** — complete Prisma schema, initial migration, demo data
 3. Authentication + Authorization (JWT, roles, users)
 4. Restaurant settings, tables, customers
 5. Menu categories, items, add-ons, variations

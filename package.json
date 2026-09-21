@@ -20,7 +20,13 @@
     "start": "npm run start -w @restaurant/server",
     "typecheck": "npm run build:shared && npm run typecheck -w @restaurant/shared && npm run typecheck -w @restaurant/server && npm run typecheck -w @restaurant/client",
     "lint": "npm run lint -w @restaurant/shared && npm run lint -w @restaurant/server && npm run lint -w @restaurant/client",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prisma:generate": "npm run prisma:generate -w @restaurant/server",
+    "prisma:migrate": "npm run prisma:migrate -w @restaurant/server",
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy -w @restaurant/server",
+    "prisma:seed": "npm run prisma:seed -w @restaurant/server",
+    "prisma:studio": "npm run prisma:studio -w @restaurant/server",
+    "prisma:reset": "npm run prisma:reset -w @restaurant/server"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
