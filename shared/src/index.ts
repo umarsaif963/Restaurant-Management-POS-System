@@ -269,3 +269,131 @@ export interface ListCustomersQuery {
   limit?: number;
   search?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Menu (module 5)
+// ---------------------------------------------------------------------------
+
+export const MENU_ITEM_STATUSES = ['ACTIVE', 'INACTIVE'] as const;
+export type MenuItemStatus = (typeof MENU_ITEM_STATUSES)[number];
+
+export interface MenuCategoryProfile {
+  id: string;
+  name: string;
+  description: string | null;
+  position: number;
+  status: MenuItemStatus;
+  itemCount: number;
+}
+
+export interface CreateMenuCategoryInput {
+  name: string;
+  description?: string | null;
+  position?: number;
+}
+
+export interface UpdateMenuCategoryInput {
+  name?: string;
+  description?: string | null;
+  position?: number;
+  status?: MenuItemStatus;
+}
+
+export interface MenuItemVariationProfile {
+  id: string;
+  menuItemId: string;
+  name: string;
+  priceAdjustment: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface MenuAddOnProfile {
+  id: string;
+  menuItemId: string;
+  name: string;
+  price: string;
+  available: boolean;
+  createdAt: string;
+}
+
+export interface MenuItemProfile {
+  id: string;
+  name: string;
+  description: string | null;
+  price: string;
+  sku: string | null;
+  categoryId: string;
+  categoryName: string;
+  taxRate: string;
+  preparationTime: number | null;
+  available: boolean;
+  imageUrl: string | null;
+  position: number;
+  status: MenuItemStatus;
+  createdAt: string;
+  updatedAt: string;
+  variations: MenuItemVariationProfile[];
+  addOns: MenuAddOnProfile[];
+}
+
+export interface CreateVariationInput {
+  name: string;
+  priceAdjustment?: string;
+  isDefault?: boolean;
+}
+
+export interface UpdateVariationInput {
+  name?: string;
+  priceAdjustment?: string;
+  isDefault?: boolean;
+}
+
+export interface CreateAddOnInput {
+  name: string;
+  price: string;
+  available?: boolean;
+}
+
+export interface UpdateAddOnInput {
+  name?: string;
+  price?: string;
+  available?: boolean;
+}
+
+export interface CreateMenuItemInput {
+  name: string;
+  price: string;
+  categoryId: string;
+  sku?: string | null;
+  description?: string | null;
+  taxRate?: string;
+  preparationTime?: number | null;
+  available?: boolean;
+  imageUrl?: string | null;
+  position?: number;
+  variations?: CreateVariationInput[];
+  addOns?: CreateAddOnInput[];
+}
+
+export interface UpdateMenuItemInput {
+  name?: string;
+  price?: string;
+  categoryId?: string;
+  sku?: string | null;
+  description?: string | null;
+  taxRate?: string;
+  preparationTime?: number | null;
+  available?: boolean;
+  imageUrl?: string | null;
+  position?: number;
+  status?: MenuItemStatus;
+}
+
+export interface ListMenuItemsQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  categoryId?: string;
+  status?: MenuItemStatus;
+}

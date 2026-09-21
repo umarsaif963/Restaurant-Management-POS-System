@@ -5,10 +5,11 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–4 complete — project setup/architecture, the full
+**Status:** Modules 1–5 complete — project setup/architecture, the full
 PostgreSQL database (schema, migration, seed), Authentication, Authorization
-&amp; user/role management, and restaurant settings, table sections/floor plan,
-and customer management. Every later module builds on the Prisma schema.
+&amp; user/role management, restaurant settings, table sections/floor plan,
+customer management, and the menu (categories, items, variations, add-ons).
+Every later module builds on the Prisma schema.
 
 ---
 
@@ -213,6 +214,20 @@ Base path: `/api/v1`
 | `POST /api/v1/customers` | Create a customer (ADMIN/MANAGER/CASHIER/WAITER) |
 | `PATCH /api/v1/customers/:id` | Update a customer (MANAGER/ADMIN) |
 | `DELETE /api/v1/customers/:id` | Delete a customer (MANAGER/ADMIN) |
+| `GET /api/v1/menu/categories` | Menu categories with item counts (authenticated) |
+| `POST /api/v1/menu/categories` | Create a category (MANAGER/ADMIN) |
+| `PATCH /api/v1/menu/categories/:id` | Update a category (MANAGER/ADMIN) |
+| `DELETE /api/v1/menu/categories/:id` | Delete an empty category (MANAGER/ADMIN) |
+| `GET /api/v1/menu/items` | List/search items with category/status filters + pagination |
+| `POST /api/v1/menu/items` | Create an item, optionally with variations + add-ons (MANAGER/ADMIN) |
+| `PATCH /api/v1/menu/items/:id` | Update an item (MANAGER/ADMIN) |
+| `DELETE /api/v1/menu/items/:id` | Delete an item with no order history (MANAGER/ADMIN) |
+| `POST /api/v1/menu/items/:itemId/variations` | Add a variation (MANAGER/ADMIN) |
+| `PATCH /api/v1/menu/variations/:id` | Update a variation (defaults transfer on `isDefault`) (MANAGER/ADMIN) |
+| `DELETE /api/v1/menu/variations/:id` | Delete a non-default variation (MANAGER/ADMIN) |
+| `POST /api/v1/menu/items/:itemId/addons` | Add an add-on (MANAGER/ADMIN) |
+| `PATCH /api/v1/menu/addons/:id` | Update an add-on (MANAGER/ADMIN) |
+| `DELETE /api/v1/menu/addons/:id` | Delete an add-on (MANAGER/ADMIN) |
 
 > In development, `forgot-password` prints the reset link to the **server
 > console** instead of sending email (SMTP is optional).
@@ -266,7 +281,7 @@ docker compose -f docker-compose.prod.yml up --build
 
 ---
 
-## Security Baseline (Modules 1–4)
+## Security Baseline (Modules 1–5)
 
 - Helmet security headers
 - CORS restricted to `CLIENT_URL` with credentials
@@ -291,7 +306,7 @@ docker compose -f docker-compose.prod.yml up --build
 2. ✅ **Database Schema, Migrations & Seed** — complete Prisma schema, initial migration, demo data
 3. ✅ **Authentication + Authorization** — JWT/refresh sessions, roles, user management, password reset
 4. ✅ **Restaurant Settings, Tables & Customers** — restaurant profile/opening hours, floor plan, customer directory
-5. Menu categories, items, add-ons, variations
+5. ✅ **Menu — categories, items, variations & add-ons** — full menu CRUD with defaults transfer and RBAC
 6. POS / order creation + order management
 7. Customer receipts, kitchen tickets, printing
 8. Kitchen Display System + Socket.IO workflow

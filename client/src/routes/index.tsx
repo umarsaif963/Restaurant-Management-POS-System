@@ -8,6 +8,7 @@ import { ProfilePage } from '@/pages/ProfilePage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { TablesPage } from '@/pages/TablesPage';
 import { CustomersPage } from '@/pages/CustomersPage';
+import { MenuPage } from '@/pages/MenuPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
@@ -45,6 +46,10 @@ export const router = createBrowserRouter([
       {
         path: 'tables',
         element: <TablesPage />,
+      },
+      {
+        path: 'menu',
+        element: <MenuPage />,
       },
       {
         path: 'customers',

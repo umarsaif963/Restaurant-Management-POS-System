@@ -36,4 +36,16 @@
   .btn-danger {
     @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
   }
+
+  .chip {
+    @apply inline-flex items-center rounded-full border border-slate-300 bg-white px-3 py-1 text-sm text-slate-600 transition hover:bg-slate-50;
+  }
+
+  .chip-active {
+    @apply border-brand-600 bg-brand-50 text-brand-700;
+  }
+
+  .checkbox {
+    @apply h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500;
+  }
 }

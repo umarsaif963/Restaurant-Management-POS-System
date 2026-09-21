@@ -5,6 +5,7 @@ import userRoutes from './user.routes.js';
 import settingsRoutes from './settings.routes.js';
 import tableRoutes from './table.routes.js';
 import customerRoutes from './customer.routes.js';
+import menuRoutes from './menu.routes.js';
 
 const router = Router();
 
@@ -14,5 +15,6 @@ router.use('/users', userRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/tables', tableRoutes);
 router.use('/customers', customerRoutes);
+router.use('/menu', menuRoutes);
 
 export default router;
