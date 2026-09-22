@@ -420,20 +420,66 @@ export async function addItems(id: string, input: AddOrderItemsInput): Promise<O
     throw ApiError.conflict('Items can only be added while the order is PENDING or CONFIRMED.');
   }
   const lines = await resolveLines(input.items);
-  await prisma.orderItem.createMany({
-    data: lines.map((line) => ({
-      orderId: id,
-      menuItemId: line.menuItemId,
-      name: line.name,
-      variationName: line.variationName,
-      addOns: line.addOns.length ? (line.addOns as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
-      quantity: line.quantity,
-      unitPrice: fromCents(line.unitPriceCents),
-      lineTotal: fromCents(line.lineTotalCents),
-      discountAmount: '0',
-      taxAmount: fromCents(line.taxAmountCents),
-      notes: line.notes,
-    })),
+  await prisma.$transaction(async (tx) => {
+    const orderItems: { id: string }[] = [];
+    for (const line of lines) {
+      const createdItem = await tx.orderItem.create({
+        data: {
+          orderId: id,
+          menuItemId: line.menuItemId,
+          name: line.name,
+          variationName: line.variationName,
+          addOns: line.addOns.length ? (line.addOns as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+          quantity: line.quantity,
+          unitPrice: fromCents(line.unitPriceCents),
+          lineTotal: fromCents(line.lineTotalCents),
+          discountAmount: '0',
+          taxAmount: fromCents(line.taxAmountCents),
+          notes: line.notes,
+        },
+      });
+      orderItems.push(createdItem);
+    }
+    // Items added to a confirmed order reach the kitchen: append to the open
+    // ticket if one exists, otherwise mint a fresh ticket (module 7).
+    if (order.status === 'CONFIRMED') {
+      const openTicket = await tx.kitchenOrder.findFirst({
+        where: { orderId: id, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (openTicket) {
+        await tx.kitchenOrderItem.createMany({
+          data: lines.map((line, index) => ({
+            kitchenOrderId: openTicket.id,
+            orderItemId: orderItems[index].id,
+            menuItemId: line.menuItemId,
+            name: line.name,
+            quantity: line.quantity,
+            notes: line.notes,
+            variant: line.variationName,
+          })),
+        });
+      } else {
+        const previousTickets = await tx.kitchenOrder.count({ where: { orderId: id } });
+        await tx.kitchenOrder.create({
+          data: {
+            orderId: id,
+            notes: order.kitchenNotes,
+            ticketNumber: previousTickets + 1,
+            items: {
+              create: lines.map((line, index) => ({
+                orderItemId: orderItems[index].id,
+                menuItemId: line.menuItemId,
+                name: line.name,
+                quantity: line.quantity,
+                notes: line.notes,
+                variant: line.variationName,
+              })),
+            },
+          },
+        });
+      }
+    }
   });
   return toOrder(await recalcTotals(id));
 }
@@ -456,7 +502,7 @@ export async function updateStatus(
   id: string,
   input: UpdateOrderStatusInput,
 ): Promise<OrderProfile> {
-  const order = await prisma.order.findUnique({ where: { id } });
+  const order = await prisma.order.findUnique({ where: { id }, include: { items: true } });
   if (!order) throw ApiError.notFound('Order not found');
 
   if (input.status === order.status) {
@@ -481,6 +527,29 @@ export async function updateStatus(
       },
       include: orderInclude(),
     });
+
+    // Confirming an order releases the kitchen ticket (module 7).
+    if (input.status === 'CONFIRMED') {
+      const existingTickets = await tx.kitchenOrder.count({ where: { orderId: id } });
+      if (existingTickets === 0) {
+        await tx.kitchenOrder.create({
+          data: {
+            orderId: id,
+            notes: order.kitchenNotes,
+            items: {
+              create: order.items.map((item) => ({
+                orderItemId: item.id,
+                menuItemId: item.menuItemId,
+                name: item.name,
+                quantity: item.quantity,
+                notes: item.notes,
+                variant: item.variationName,
+              })),
+            },
+          },
+        });
+      }
+    }
 
     if (input.status === 'COMPLETED' && next.tableId) {
       await tx.restaurantTable.update({

@@ -26,6 +26,11 @@ router.get(
   validate({ params: resourceIdParamsSchema }),
   orderController.getOrder,
 );
+router.get(
+  '/:id/receipt',
+  validate({ params: resourceIdParamsSchema }),
+  orderController.getReceipt,
+);
 
 router.post(
   '/',

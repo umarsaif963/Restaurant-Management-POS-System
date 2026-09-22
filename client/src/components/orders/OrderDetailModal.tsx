@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, Plus, Search, Trash2 } from 'lucide-react';
+import { ClipboardList, Plus, Printer, Search, Trash2 } from 'lucide-react';
 import type { MenuItemProfile, OrderStatus } from '@restaurant/shared';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
@@ -145,6 +145,16 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
             {order.cancelledReason && (
               <Badge variant="red">Cancelled: {order.cancelledReason}</Badge>
             )}
+            <a
+              href={`/print/receipt/${order.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary ml-auto px-3 py-1.5 text-xs"
+              title="Open a printable customer receipt"
+            >
+              <Printer className="mr-1 h-3.5 w-3.5" />
+              Print receipt
+            </a>
           </div>
 
           <section className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">

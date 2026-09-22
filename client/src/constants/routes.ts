@@ -1,5 +1,6 @@
 import {
   Activity,
+  ChefHat,
   LayoutGrid,
   ReceiptText,
   Settings,
@@ -64,6 +65,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Orders',
         to: '/orders',
         icon: ReceiptText,
+      },
+      {
+        label: 'Kitchen',
+        to: '/kitchen',
+        icon: ChefHat,
+        roles: ['ADMIN', 'MANAGER', 'KITCHEN_STAFF'],
       },
       {
         label: 'Menu',

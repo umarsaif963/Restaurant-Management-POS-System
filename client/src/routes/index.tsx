@@ -11,6 +11,9 @@ import { CustomersPage } from '@/pages/CustomersPage';
 import { MenuPage } from '@/pages/MenuPage';
 import { POSPage } from '@/pages/POSPage';
 import { OrdersPage } from '@/pages/OrdersPage';
+import { KitchenOrdersPage } from '@/pages/kitchen/KitchenOrdersPage';
+import { PrintReceiptPage } from '@/pages/print/PrintReceiptPage';
+import { PrintKitchenPage } from '@/pages/print/PrintKitchenPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
@@ -28,6 +31,22 @@ export const router = createBrowserRouter([
   {
     path: '/reset-password',
     element: <ResetPasswordPage />,
+  },
+  {
+    path: '/print/receipt/:orderId',
+    element: (
+      <RequireAuth>
+        <PrintReceiptPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/print/kitchen/:kitchenOrderId',
+    element: (
+      <RequireAuth>
+        <PrintKitchenPage />
+      </RequireAuth>
+    ),
   },
   {
     path: '/',
@@ -60,6 +79,14 @@ export const router = createBrowserRouter([
       {
         path: 'orders',
         element: <OrdersPage />,
+      },
+      {
+        path: 'kitchen',
+        element: (
+          <RoleGuard roles={['ADMIN', 'MANAGER', 'KITCHEN_STAFF']}>
+            <KitchenOrdersPage />
+          </RoleGuard>
+        ),
       },
       {
         path: 'menu',

@@ -5,6 +5,7 @@ import type {
   ListOrdersQuery,
   OrderProfile,
   Paginated,
+  ReceiptView,
   UpdateOrderInput,
   UpdateOrderStatusInput,
 } from '@restaurant/shared';
@@ -28,6 +29,11 @@ export const orderApi = apiSlice.injectEndpoints({
     getOrder: build.query<OrderProfile, string>({
       query: (id) => ({ url: `/v1/orders/${id}`, method: 'GET' }),
       transformResponse: (response: ApiResponse<{ order: OrderProfile }>) => response.data!.order,
+      providesTags: (_result, _error, id) => [{ type: 'Orders' as const, id }],
+    }),
+    getReceipt: build.query<ReceiptView, string>({
+      query: (id) => ({ url: `/v1/orders/${id}/receipt`, method: 'GET' }),
+      transformResponse: (response: ApiResponse<{ receipt: ReceiptView }>) => response.data!.receipt,
       providesTags: (_result, _error, id) => [{ type: 'Orders' as const, id }],
     }),
     createOrder: build.mutation<OrderProfile, CreateOrderInput>({
@@ -76,6 +82,7 @@ export const orderApi = apiSlice.injectEndpoints({
 export const {
   useListOrdersQuery,
   useGetOrderQuery,
+  useGetReceiptQuery,
   useCreateOrderMutation,
   useUpdateOrderMutation,
   useAddOrderItemsMutation,

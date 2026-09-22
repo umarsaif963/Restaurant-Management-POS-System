@@ -57,3 +57,26 @@
     @apply border-brand-600 bg-brand-600 text-white hover:bg-brand-600;
   }
 }
+
+@layer base {
+  @page {
+    margin: 12mm;
+  }
+
+  @media print {
+    body {
+      background: #fff;
+    }
+
+    .no-print {
+      display: none !important;
+    }
+
+    .print-area {
+      border: 0 !important;
+      box-shadow: none !important;
+      margin: 0 !important;
+      max-width: none !important;
+    }
+  }
+}

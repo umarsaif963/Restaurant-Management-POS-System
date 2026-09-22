@@ -7,6 +7,7 @@ import type {
   UpdateOrderStatusInput,
 } from '@restaurant/shared';
 import * as orderService from '../services/order.service.js';
+import * as receiptService from '../services/receipt.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 function currentUserId(req: Request): string {
@@ -23,6 +24,12 @@ export const getOrder = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.validatedParams as { id: string };
   const order = await orderService.getOrder(id);
   res.status(200).json({ success: true, data: { order } });
+});
+
+export const getReceipt = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.validatedParams as { id: string };
+  const receipt = await receiptService.buildReceipt(id);
+  res.status(200).json({ success: true, data: { receipt } });
 });
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {

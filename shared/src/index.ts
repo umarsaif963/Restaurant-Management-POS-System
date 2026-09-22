@@ -504,3 +504,79 @@ export interface ListOrdersQuery {
   orderType?: OrderType;
   search?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Kitchen tickets (module 7)
+// ---------------------------------------------------------------------------
+
+export const KITCHEN_ORDER_STATUSES = ['PENDING', 'ACCEPTED', 'PREPARING', 'READY', 'SERVED', 'COMPLETED', 'CANCELLED'] as const;
+export type KitchenOrderStatus = (typeof KITCHEN_ORDER_STATUSES)[number];
+
+export const KITCHEN_ITEM_STATUSES = ['WAITING', 'PREPARING', 'READY', 'SERVED', 'CANCELLED'] as const;
+export type KitchenItemStatus = (typeof KITCHEN_ITEM_STATUSES)[number];
+
+export interface KitchenOrderItemProfile {
+  id: string;
+  kitchenOrderId: string;
+  orderItemId: string;
+  menuItemId: string;
+  name: string;
+  quantity: number;
+  notes: string | null;
+  variant: string | null;
+  status: KitchenItemStatus;
+  createdAt: string;
+}
+
+export interface KitchenOrderProfile {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  ticketNumber: number;
+  status: KitchenOrderStatus;
+  orderType: OrderType;
+  orderStatus: OrderStatus;
+  tableId: string | null;
+  tableNumber: number | null;
+  tableName: string | null;
+  customerName: string | null;
+  notes: string | null;
+  acceptedById: string | null;
+  acceptedByName: string | null;
+  startedAt: string | null;
+  readyAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  items: KitchenOrderItemProfile[];
+}
+
+export interface ListKitchenOrdersQuery {
+  page?: number;
+  limit?: number;
+  status?: KitchenOrderStatus;
+  orderId?: string;
+}
+
+export interface UpdateKitchenOrderStatusInput {
+  status: KitchenOrderStatus;
+}
+
+// ---------------------------------------------------------------------------
+// Receipts (module 7)
+// ---------------------------------------------------------------------------
+
+export interface ReceiptView {
+  order: OrderProfile;
+  restaurantName: string;
+  restaurantAddress: string | null;
+  restaurantPhone: string | null;
+  restaurantEmail: string | null;
+  currency: string;
+  receiptHeader: string | null;
+  receiptFooter: string | null;
+  showTaxOnReceipt: boolean;
+  showServiceChargeOnReceipt: boolean;
+  serviceChargePct: string;
+  taxPercentage: string;
+  printedAt: string;
+}

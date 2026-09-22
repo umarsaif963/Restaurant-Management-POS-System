@@ -5,13 +5,16 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–6 complete — project setup/architecture, the full
+**Status:** Modules 1–7 complete — project setup/architecture, the full
 PostgreSQL database (schema, migration, seed), Authentication, Authorization
 &amp; user/role management, restaurant settings, table sections/floor plan,
-customer management, the menu (categories, items, variations, add-ons), and
+customer management, the menu (categories, items, variations, add-ons),
 the **Point of Sale (order creation + order management)** — line-item pricing
 (variations, add-ons, tax), dine-in/takeaway/delivery orders, table &amp;
-customer lifecycle and order status workflow.
+customer lifecycle and order status workflow — and **customer receipts,
+kitchen tickets &amp; printing** — automatic kitchen tickets on order
+confirmation, a kitchen ticket board with a dedicated status workflow, and
+printable customer receipts and kitchen tickets.
 Every later module builds on the Prisma schema.
 
 ---
@@ -238,6 +241,10 @@ Base path: `/api/v1`
 | `POST /api/v1/orders/:id/items` | Add items to a PENDING/CONFIRMED order (ADMIN/MANAGER/CASHIER/WAITER) |
 | `DELETE /api/v1/orders/:id/items/:itemId` | Remove an item + re-total (ADMIN/MANAGER/CASHIER/WAITER) |
 | `POST /api/v1/orders/:id/status` | Advance status per the order state machine; cancel requires a reason (ADMIN/MANAGER/CASHIER/WAITER) |
+| `GET /api/v1/orders/:id/receipt` | Printable customer receipt (restaurant branding + settings + order totals) (authenticated) |
+| `GET /api/v1/kitchen-orders` | List kitchen tickets (status, orderId) + pagination (authenticated) |
+| `GET /api/v1/kitchen-orders/:id` | Kitchen ticket detail with item snapshots (authenticated) |
+| `POST /api/v1/kitchen-orders/:id/status` | Advance a ticket (ACCEPTED → PREPARING → READY → SERVED → COMPLETED; cancel allowed early) (KITCHEN_STAFF/MANAGER/ADMIN) |
 
 > In development, `forgot-password` prints the reset link to the **server
 > console** instead of sending email (SMTP is optional).
@@ -308,6 +315,7 @@ docker compose -f docker-compose.prod.yml up --build
 - **Hashed, single-use password-reset tokens with short expiry (30 min)**
 - **Generic 401s / always-200 forgot-password (no account enumeration)**
 - **Order mutations restricted to front-of-house roles; kitchen staff are read-only**
+- **Kitchen ticket mutations restricted to KITCHEN_STAFF / MANAGER / ADMIN**
 
 ---
 
@@ -319,7 +327,7 @@ docker compose -f docker-compose.prod.yml up --build
 4. ✅ **Restaurant Settings, Tables & Customers** — restaurant profile/opening hours, floor plan, customer directory
 5. ✅ **Menu — categories, items, variations & add-ons** — full menu CRUD with defaults transfer and RBAC
 6. ✅ **Point of Sale — order creation + order management** — order number generation, item pricing (variations/add-ons/tax), dine-in/takeaway/delivery, status workflow with table & customer side-effects, POS + Orders UI
-7. Customer receipts, kitchen tickets, printing
+7. ✅ **Customer receipts, kitchen tickets & printing** — automated kitchen tickets on confirm, ticket state machine + kitchen board, printable receipts/tickets
 8. Kitchen Display System + Socket.IO workflow
 9. Payments + billing
 10. Inventory, recipes, ingredients
