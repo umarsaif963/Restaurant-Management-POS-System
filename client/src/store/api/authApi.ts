@@ -31,7 +31,16 @@ export const authApi = apiSlice.injectEndpoints({
     }),
     logout: build.mutation<void, void>({
       query: () => ({ url: '/v1/auth/logout', method: 'POST' }),
-      invalidatesTags: [{ type: 'Me' }],
+      onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
+        try {
+          await queryFulfilled;
+        } catch {
+          // Server already cleared the cookies; still drop cached data below.
+        }
+        // Wipe every cached query (notably the stale `me` user) so guards no
+        // longer see a signed-in user and redirect to /login immediately.
+        dispatch(apiSlice.util.resetApiState());
+      },
     }),
     changePassword: build.mutation<MessageData, ChangePasswordInput>({
       query: (body) => ({ url: '/v1/auth/change-password', method: 'POST', data: body }),
