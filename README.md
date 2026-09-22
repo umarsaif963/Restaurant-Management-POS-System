@@ -5,10 +5,13 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–5 complete — project setup/architecture, the full
+**Status:** Modules 1–6 complete — project setup/architecture, the full
 PostgreSQL database (schema, migration, seed), Authentication, Authorization
 &amp; user/role management, restaurant settings, table sections/floor plan,
-customer management, and the menu (categories, items, variations, add-ons).
+customer management, the menu (categories, items, variations, add-ons), and
+the **Point of Sale (order creation + order management)** — line-item pricing
+(variations, add-ons, tax), dine-in/takeaway/delivery orders, table &amp;
+customer lifecycle and order status workflow.
 Every later module builds on the Prisma schema.
 
 ---
@@ -228,6 +231,13 @@ Base path: `/api/v1`
 | `POST /api/v1/menu/items/:itemId/addons` | Add an add-on (MANAGER/ADMIN) |
 | `PATCH /api/v1/menu/addons/:id` | Update an add-on (MANAGER/ADMIN) |
 | `DELETE /api/v1/menu/addons/:id` | Delete an add-on (MANAGER/ADMIN) |
+| `GET /api/v1/orders` | List/search orders (status, type, payment, text) + pagination (authenticated) |
+| `GET /api/v1/orders/:id` | Order detail with line-item snapshots (authenticated) |
+| `POST /api/v1/orders` | Create an order (DINE_IN/TAKEAWAY/DELIVERY) with items (ADMIN/MANAGER/CASHIER/WAITER) |
+| `PATCH /api/v1/orders/:id` | Update notes, kitchen notes, customer, table, order type (ADMIN/MANAGER/CASHIER/WAITER) |
+| `POST /api/v1/orders/:id/items` | Add items to a PENDING/CONFIRMED order (ADMIN/MANAGER/CASHIER/WAITER) |
+| `DELETE /api/v1/orders/:id/items/:itemId` | Remove an item + re-total (ADMIN/MANAGER/CASHIER/WAITER) |
+| `POST /api/v1/orders/:id/status` | Advance status per the order state machine; cancel requires a reason (ADMIN/MANAGER/CASHIER/WAITER) |
 
 > In development, `forgot-password` prints the reset link to the **server
 > console** instead of sending email (SMTP is optional).
@@ -281,7 +291,7 @@ docker compose -f docker-compose.prod.yml up --build
 
 ---
 
-## Security Baseline (Modules 1–5)
+## Security Baseline (Modules 1–6)
 
 - Helmet security headers
 - CORS restricted to `CLIENT_URL` with credentials
@@ -297,6 +307,7 @@ docker compose -f docker-compose.prod.yml up --build
 - **Soft-deactivate accounts (status `INACTIVE`) revokes all sessions**
 - **Hashed, single-use password-reset tokens with short expiry (30 min)**
 - **Generic 401s / always-200 forgot-password (no account enumeration)**
+- **Order mutations restricted to front-of-house roles; kitchen staff are read-only**
 
 ---
 
@@ -307,7 +318,7 @@ docker compose -f docker-compose.prod.yml up --build
 3. ✅ **Authentication + Authorization** — JWT/refresh sessions, roles, user management, password reset
 4. ✅ **Restaurant Settings, Tables & Customers** — restaurant profile/opening hours, floor plan, customer directory
 5. ✅ **Menu — categories, items, variations & add-ons** — full menu CRUD with defaults transfer and RBAC
-6. POS / order creation + order management
+6. ✅ **Point of Sale — order creation + order management** — order number generation, item pricing (variations/add-ons/tax), dine-in/takeaway/delivery, status workflow with table & customer side-effects, POS + Orders UI
 7. Customer receipts, kitchen tickets, printing
 8. Kitchen Display System + Socket.IO workflow
 9. Payments + billing

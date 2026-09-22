@@ -397,3 +397,110 @@ export interface ListMenuItemsQuery {
   categoryId?: string;
   status?: MenuItemStatus;
 }
+
+// ---------------------------------------------------------------------------
+// Orders (module 6)
+// ---------------------------------------------------------------------------
+
+export const ORDER_TYPES = ['DINE_IN', 'TAKEAWAY', 'DELIVERY'] as const;
+export type OrderType = (typeof ORDER_TYPES)[number];
+
+export const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'SERVED', 'COMPLETED', 'CANCELLED'] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+export const PAYMENT_STATUSES = ['UNPAID', 'PARTIAL', 'PAID', 'REFUNDED'] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+export interface OrderAddOnSnapshot {
+  name: string;
+  price: string;
+}
+
+export interface OrderItemProfile {
+  id: string;
+  orderId: string;
+  menuItemId: string;
+  name: string;
+  variationName: string | null;
+  addOns: OrderAddOnSnapshot[] | null;
+  quantity: number;
+  unitPrice: string;
+  lineTotal: string;
+  discountAmount: string;
+  taxAmount: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface OrderProfile {
+  id: string;
+  orderNumber: string;
+  orderType: OrderType;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  customerId: string | null;
+  customerName: string | null;
+  tableId: string | null;
+  tableNumber: number | null;
+  tableName: string | null;
+  userId: string;
+  userName: string;
+  subtotal: string;
+  itemDiscountTotal: string;
+  discountAmount: string;
+  taxAmount: string;
+  serviceChargeAmount: string;
+  grandTotal: string;
+  totalPaid: string;
+  balanceDue: string;
+  notes: string | null;
+  kitchenNotes: string | null;
+  cancelledReason: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  items: OrderItemProfile[];
+}
+
+export interface CreateOrderItemInput {
+  menuItemId: string;
+  quantity?: number;
+  variationId?: string;
+  addOnIds?: string[];
+  notes?: string;
+}
+
+export interface CreateOrderInput {
+  orderType?: OrderType;
+  tableId?: string | null;
+  customerId?: string | null;
+  notes?: string | null;
+  kitchenNotes?: string | null;
+  discountAmount?: string;
+  items: CreateOrderItemInput[];
+}
+
+export interface AddOrderItemsInput {
+  items: CreateOrderItemInput[];
+}
+
+export interface UpdateOrderInput {
+  notes?: string | null;
+  kitchenNotes?: string | null;
+  customerId?: string | null;
+  tableId?: string | null;
+  orderType?: OrderType;
+}
+
+export interface UpdateOrderStatusInput {
+  status: OrderStatus;
+  cancelledReason?: string;
+}
+
+export interface ListOrdersQuery {
+  page?: number;
+  limit?: number;
+  status?: OrderStatus;
+  paymentStatus?: PaymentStatus;
+  orderType?: OrderType;
+  search?: string;
+}
