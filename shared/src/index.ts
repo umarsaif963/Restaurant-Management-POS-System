@@ -580,3 +580,44 @@ export interface ReceiptView {
   taxPercentage: string;
   printedAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// Real-time events (module 8)
+// ---------------------------------------------------------------------------
+
+/**
+ * Server -> client Socket.IO channels. Services publish domain events on an
+ * in-process bus and the socket layer forwards them to every connected
+ * client; the client invalidates the matching RTK Query tags so subscribed
+ * views (orders, kitchen display, tables, customers) refetch instantly.
+ */
+export const SOCKET_EVENTS = {
+  orderUpdated: 'order:updated',
+  kitchenCreated: 'kitchen:created',
+  kitchenUpdated: 'kitchen:updated',
+  tableUpdated: 'table:updated',
+  customerUpdated: 'customer:updated',
+} as const;
+
+export type SocketEventName = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];
+
+export interface OrderUpdatedPayload {
+  orderId: string;
+}
+
+export interface KitchenCreatedPayload {
+  orderId: string;
+}
+
+export interface KitchenUpdatedPayload {
+  kitchenOrderId?: string;
+  orderId: string;
+}
+
+export interface TableUpdatedPayload {
+  tableId?: string;
+}
+
+export interface CustomerUpdatedPayload {
+  customerId?: string;
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ChefHat, Printer, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ChefHat, MonitorPlay, Printer, RefreshCw } from 'lucide-react';
 import type { KitchenOrderStatus } from '@restaurant/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
@@ -59,10 +60,16 @@ export function KitchenOrdersPage() {
         title="Kitchen"
         description="Live production tickets — confirmed orders land here automatically."
         actions={
-          <button type="button" className="btn-secondary" onClick={refetch} title="Refresh">
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
+          <>
+            <Link to="/kds" className="btn-secondary" title="Open the live kitchen display">
+              <MonitorPlay className="h-4 w-4" />
+              Kitchen display
+            </Link>
+            <button type="button" className="btn-secondary" onClick={refetch} title="Refresh">
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+          </>
         }
       />
 

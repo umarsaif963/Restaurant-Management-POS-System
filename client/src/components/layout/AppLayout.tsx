@@ -2,6 +2,12 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { Toaster } from '@/components/ui/Toaster';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+
+function RealtimeSync() {
+  useRealtimeSync();
+  return null;
+}
 
 export function AppLayout() {
   return (
@@ -14,6 +20,7 @@ export function AppLayout() {
         </main>
       </div>
       <Toaster />
+      <RealtimeSync />
     </div>
   );
 }

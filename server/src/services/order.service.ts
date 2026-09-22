@@ -13,6 +13,7 @@ import { OrderStatus, Prisma, type Order } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { fromCents, percentOf, toCents } from '../utils/money.js';
+import { realtime } from '../sockets/realtime.js';
 
 const ALLOW_ITEM_EDITS: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CONFIRMED];
 
@@ -313,6 +314,10 @@ export async function createOrder(
         }
         return created;
       });
+      realtime.orderUpdated({ orderId: order.id });
+      if (order.tableId) {
+        realtime.tableUpdated({ tableId: order.tableId });
+      }
       return toOrder(order);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -384,6 +389,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput): Promise<
     },
     include: orderInclude(),
   });
+  realtime.orderUpdated({ orderId: id });
   return toOrder(order);
 }
 
@@ -420,6 +426,7 @@ export async function addItems(id: string, input: AddOrderItemsInput): Promise<O
     throw ApiError.conflict('Items can only be added while the order is PENDING or CONFIRMED.');
   }
   const lines = await resolveLines(input.items);
+  let kitchenTicketId: string | undefined;
   await prisma.$transaction(async (tx) => {
     const orderItems: { id: string }[] = [];
     for (const line of lines) {
@@ -459,9 +466,10 @@ export async function addItems(id: string, input: AddOrderItemsInput): Promise<O
             variant: line.variationName,
           })),
         });
+        kitchenTicketId = openTicket.id;
       } else {
         const previousTickets = await tx.kitchenOrder.count({ where: { orderId: id } });
-        await tx.kitchenOrder.create({
+        const ticket = await tx.kitchenOrder.create({
           data: {
             orderId: id,
             notes: order.kitchenNotes,
@@ -478,9 +486,14 @@ export async function addItems(id: string, input: AddOrderItemsInput): Promise<O
             },
           },
         });
+        kitchenTicketId = ticket.id;
       }
     }
   });
+  realtime.orderUpdated({ orderId: id });
+  if (order.status === 'CONFIRMED' && kitchenTicketId) {
+    realtime.kitchenUpdated({ kitchenOrderId: kitchenTicketId, orderId: id });
+  }
   return toOrder(await recalcTotals(id));
 }
 
@@ -493,6 +506,10 @@ export async function removeItem(orderId: string, itemId: string): Promise<Order
   const item = await prisma.orderItem.findFirst({ where: { id: itemId, orderId } });
   if (!item) throw ApiError.notFound('Order item not found');
   await prisma.orderItem.delete({ where: { id: itemId } });
+  realtime.orderUpdated({ orderId });
+  if (order.status === 'CONFIRMED') {
+    realtime.kitchenUpdated({ orderId });
+  }
   return toOrder(await recalcTotals(orderId));
 }
 
@@ -516,6 +533,7 @@ export async function updateStatus(
     throw ApiError.badRequest('A reason is required to cancel an order.');
   }
 
+  let ticketCreated = false;
   const updated = await prisma.$transaction(async (tx) => {
     const now = new Date();
     const next = await tx.order.update({
@@ -548,6 +566,7 @@ export async function updateStatus(
             },
           },
         });
+        ticketCreated = true;
       }
     }
 
@@ -584,6 +603,15 @@ export async function updateStatus(
 
     return next;
   });
+
+  if (input.status === 'CONFIRMED' && ticketCreated) {
+    realtime.kitchenCreated({ orderId: id });
+  }
+  realtime.orderUpdated({ orderId: id });
+  if (input.status === 'COMPLETED' || input.status === 'CANCELLED') {
+    realtime.tableUpdated(updated.tableId ? { tableId: updated.tableId } : {});
+    realtime.customerUpdated(updated.customerId ? { customerId: updated.customerId } : {});
+  }
 
   return toOrder(updated);
 }

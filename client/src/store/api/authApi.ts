@@ -8,6 +8,7 @@ import type {
   ResetPasswordInput,
 } from '@restaurant/shared';
 import { apiSlice } from './apiSlice';
+import { disconnectSocket } from '@/services/socket';
 
 interface MessageData {
   message: string;
@@ -37,6 +38,9 @@ export const authApi = apiSlice.injectEndpoints({
         } catch {
           // Server already cleared the cookies; still drop cached data below.
         }
+        // Drop the realtime connection along with the stale session so the
+        // next login starts from a clean socket (module 8).
+        disconnectSocket();
         // Wipe every cached query (notably the stale `me` user) so guards no
         // longer see a signed-in user and redirect to /login immediately.
         dispatch(apiSlice.util.resetApiState());

@@ -12,6 +12,7 @@ import { MenuPage } from '@/pages/MenuPage';
 import { POSPage } from '@/pages/POSPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { KitchenOrdersPage } from '@/pages/kitchen/KitchenOrdersPage';
+import { KdsPage } from '@/pages/kds/KdsPage';
 import { PrintReceiptPage } from '@/pages/print/PrintReceiptPage';
 import { PrintKitchenPage } from '@/pages/print/PrintKitchenPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
@@ -85,6 +86,14 @@ export const router = createBrowserRouter([
         element: (
           <RoleGuard roles={['ADMIN', 'MANAGER', 'KITCHEN_STAFF']}>
             <KitchenOrdersPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: 'kds',
+        element: (
+          <RoleGuard roles={['ADMIN', 'MANAGER', 'KITCHEN_STAFF']}>
+            <KdsPage />
           </RoleGuard>
         ),
       },

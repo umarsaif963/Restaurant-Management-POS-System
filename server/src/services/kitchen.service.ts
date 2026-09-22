@@ -8,6 +8,7 @@ import type {
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
+import { realtime } from '../sockets/realtime.js';
 
 export const KITCHEN_TRANSITIONS: Record<KitchenOrderStatus, KitchenOrderStatus[]> = {
   PENDING: ['ACCEPTED', 'CANCELLED'],
@@ -163,6 +164,8 @@ export async function updateKitchenOrderStatus(
       include: kitchenInclude(),
     });
   });
+
+  realtime.kitchenUpdated({ kitchenOrderId: id, orderId: kitchen.orderId });
 
   return toKitchen(updated);
 }

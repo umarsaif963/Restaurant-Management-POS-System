@@ -5,16 +5,19 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–7 complete — project setup/architecture, the full
+**Status:** Modules 1–8 complete — project setup/architecture, the full
 PostgreSQL database (schema, migration, seed), Authentication, Authorization
 &amp; user/role management, restaurant settings, table sections/floor plan,
 customer management, the menu (categories, items, variations, add-ons),
 the **Point of Sale (order creation + order management)** — line-item pricing
 (variations, add-ons, tax), dine-in/takeaway/delivery orders, table &amp;
-customer lifecycle and order status workflow — and **customer receipts,
-kitchen tickets &amp; printing** — automatic kitchen tickets on order
-confirmation, a kitchen ticket board with a dedicated status workflow, and
-printable customer receipts and kitchen tickets.
+customer lifecycle and order status workflow, **customer receipts, kitchen
+tickets &amp; printing** — automatic kitchen tickets on order confirmation, a
+kitchen ticket board with a dedicated status workflow, printable customer
+receipts and kitchen tickets — and the **Kitchen Display System (KDS) with a
+real-time Socket.IO workflow** — authenticated sockets, server-pushed domain
+events (order/kitchen/table/customer) that keep every open view in sync, and
+a live kitchen production board.
 Every later module builds on the Prisma schema.
 
 ---
@@ -268,15 +271,26 @@ malformed JSON, and unexpected exceptions never leak internals.
 
 ## Real-time (Socket.IO)
 
-`/socket.io` namespace with CORS restricted to `CLIENT_URL`.
+`/socket.io` namespace with CORS restricted to `CLIENT_URL`. Every handshake
+is authenticated with the same access token as the REST API (either the
+`access_token` cookie on same-origin connections or a token passed in the
+socket `auth` payload for API clients); invalid sessions are rejected.
+
+Server pushes domain events over five channels. Services publish on an
+in-process bus **after committed mutations** (never on rollback), and the
+socket layer forwards each event to every connected client. The web client
+bridges them into RTK Query tag invalidations, so open views (orders, kitchen
+display, tables, customers) refetch instantly without polling.
 
 | Event (client → server) | Event (server → client) | Purpose |
 | --- | --- | --- |
 | `ping` | `pong` | Latency probe (used by System Status page) |
 | — | `server:info` | Server identity on connect |
-
-Kitchen Display, order status, and table-status broadcasts attach to this same
-socket layer in later modules.
+| — | `order:updated` | Order created / updated / items changed / status changed (payload: `orderId`) |
+| — | `kitchen:created` | Order confirmed → kitchen ticket minted (payload: `orderId`) |
+| — | `kitchen:updated` | Ticket status advanced or ticket items appended/removed (payload: `orderId`, optional `kitchenOrderId`) |
+| — | `table:updated` | Table availability changed (payload: optional `tableId`) |
+| — | `customer:updated` | Customer totals changed on completed order (payload: optional `customerId`) |
 
 ---
 
@@ -316,6 +330,8 @@ docker compose -f docker-compose.prod.yml up --build
 - **Generic 401s / always-200 forgot-password (no account enumeration)**
 - **Order mutations restricted to front-of-house roles; kitchen staff are read-only**
 - **Kitchen ticket mutations restricted to KITCHEN_STAFF / MANAGER / ADMIN**
+- **Socket.IO handshakes authenticated (access JWT + live server-side session);
+  unauthenticated sockets are disconnected**
 
 ---
 
@@ -328,7 +344,7 @@ docker compose -f docker-compose.prod.yml up --build
 5. ✅ **Menu — categories, items, variations & add-ons** — full menu CRUD with defaults transfer and RBAC
 6. ✅ **Point of Sale — order creation + order management** — order number generation, item pricing (variations/add-ons/tax), dine-in/takeaway/delivery, status workflow with table & customer side-effects, POS + Orders UI
 7. ✅ **Customer receipts, kitchen tickets & printing** — automated kitchen tickets on confirm, ticket state machine + kitchen board, printable receipts/tickets
-8. Kitchen Display System + Socket.IO workflow
+8. ✅ **Kitchen Display System + Socket.IO workflow** — authenticated sockets, server-pushed domain events (order/kitchen/table/customer) invalidating open views, and a live KDS production board
 9. Payments + billing
 10. Inventory, recipes, ingredients
 11. Suppliers + purchases

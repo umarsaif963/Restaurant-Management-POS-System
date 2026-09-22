@@ -2,6 +2,7 @@ import {
   Activity,
   ChefHat,
   LayoutGrid,
+  MonitorPlay,
   ReceiptText,
   Settings,
   ShoppingCart,
@@ -70,6 +71,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Kitchen',
         to: '/kitchen',
         icon: ChefHat,
+        roles: ['ADMIN', 'MANAGER', 'KITCHEN_STAFF'],
+      },
+      {
+        label: 'Kitchen Display',
+        to: '/kds',
+        icon: MonitorPlay,
         roles: ['ADMIN', 'MANAGER', 'KITCHEN_STAFF'],
       },
       {
