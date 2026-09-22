@@ -25,7 +25,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  const { data: currentUser } = useGetMeQuery();
+  const { data: currentUser, isLoading: meLoading, isFetching: meFetching, isUninitialized: meUninitialized } = useGetMeQuery();
   const [login, { isLoading }] = useLoginMutation();
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -49,7 +49,7 @@ export function LoginPage() {
     }
   }
 
-  if (currentUser) {
+  if (currentUser && !meLoading && !meUninitialized && !meFetching) {
     return <Navigate to="/" replace />;
   }
 

@@ -31,6 +31,7 @@ export const authApi = apiSlice.injectEndpoints({
     }),
     logout: build.mutation<void, void>({
       query: () => ({ url: '/v1/auth/logout', method: 'POST' }),
+      invalidatesTags: [{ type: 'Me' }],
     }),
     changePassword: build.mutation<MessageData, ChangePasswordInput>({
       query: (body) => ({ url: '/v1/auth/change-password', method: 'POST', data: body }),

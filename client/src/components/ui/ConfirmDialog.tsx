@@ -19,20 +19,20 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  if (!open) return null;
+
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${open ? '' : 'pointer-events-none'}`}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
     >
       <div
-        className={`absolute inset-0 bg-slate-900/50 transition-opacity ${open ? 'opacity-100' : 'opacity-0'}`}
-        onClick={open ? onCancel : undefined}
+        className="absolute inset-0 bg-slate-900/50"
+        onClick={onCancel}
         aria-hidden="true"
       />
-      <div
-        className={`relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl transition-transform ${open ? 'translate-y-0' : '-translate-y-2'}`}
-      >
+      <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
         <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
         <p className="mt-2 text-sm text-slate-500">{message}</p>
         <div className="mt-5 flex justify-end gap-2">
