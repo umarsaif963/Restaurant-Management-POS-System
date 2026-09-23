@@ -2,6 +2,7 @@ import {
   Activity,
   BookOpenText,
   Boxes,
+  CalendarDays,
   ChefHat,
   ClipboardList,
   LayoutGrid,
@@ -107,6 +108,11 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Purchases',
         to: '/purchases',
         icon: ClipboardList,
+      },
+      {
+        label: 'Reservations',
+        to: '/reservations',
+        icon: CalendarDays,
       },
       {
         label: 'Tables',

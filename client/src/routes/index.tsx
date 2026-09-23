@@ -13,6 +13,7 @@ import { InventoryPage } from '@/pages/InventoryPage';
 import { RecipesPage } from '@/pages/RecipesPage';
 import { SuppliersPage } from '@/pages/SuppliersPage';
 import { PurchasesPage } from '@/pages/PurchasesPage';
+import { ReservationsPage } from '@/pages/ReservationsPage';
 import { POSPage } from '@/pages/POSPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { KitchenOrdersPage } from '@/pages/kitchen/KitchenOrdersPage';
@@ -120,6 +121,10 @@ export const router = createBrowserRouter([
       {
         path: 'purchases',
         element: <PurchasesPage />,
+      },
+      {
+        path: 'reservations',
+        element: <ReservationsPage />,
       },
       {
         path: 'customers',

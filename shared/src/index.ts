@@ -901,3 +901,65 @@ export interface ListPurchasesQuery {
   search?: string;
   status?: PurchaseStatus;
 }
+
+// ===========================================================================
+// Module 12 — Reservations
+// ===========================================================================
+
+export const RESERVATION_STATUSES = ['PENDING', 'CONFIRMED', 'SEATED', 'COMPLETED', 'CANCELLED'] as const;
+export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
+
+export interface ReservationProfile {
+  id: string;
+  customerName: string;
+  phone: string | null;
+  customerId: string | null;
+  customerEmail: string | null;
+  tableId: string | null;
+  tableNumber: number | null;
+  tableName: string | null;
+  capacity: number | null;
+  guests: number;
+  date: string;
+  notes: string | null;
+  status: ReservationStatus;
+  createdById: string | null;
+  createdByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateReservationInput {
+  customerName: string;
+  phone?: string | null;
+  customerId?: string | null;
+  tableId?: string | null;
+  guests: number;
+  date: string;
+  notes?: string | null;
+}
+
+export interface UpdateReservationInput {
+  customerName?: string;
+  phone?: string | null;
+  customerId?: string | null;
+  tableId?: string | null;
+  guests?: number;
+  date?: string;
+  notes?: string | null;
+}
+
+export interface ChangeReservationStatusInput {
+  status: Extract<ReservationStatus, 'CONFIRMED' | 'SEATED' | 'COMPLETED' | 'CANCELLED'>;
+}
+
+export interface ListReservationsQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: ReservationStatus;
+  /** Inclusive lower bound (ISO datetime) for the reservation date. */
+  from?: string;
+  /** Inclusive upper bound (ISO datetime) for the reservation date. */
+  to?: string;
+}

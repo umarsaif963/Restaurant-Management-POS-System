@@ -371,6 +371,66 @@ const SUPPLIERS = [
   { name: 'City Pantry Wholesale', company: 'City Pantry Inc.', phone: '+1 555 010 8820', email: 'accounts@citypantry.example', address: '5 Warehouse Blvd, Commerce District', notes: 'Dry goods, oils and beverages. Weekly standing order.' },
 ];
 
+interface SeedReservation {
+  customerName: string;
+  customerEmail?: string | null;
+  phone?: string | null;
+  tableNumber?: number | null;
+  guests: number;
+  /** Relative offset in milliseconds from "now" — recomputed on every seed. */
+  offsetMs: number;
+  notes?: string | null;
+  status: 'PENDING' | 'CONFIRMED' | 'SEATED' | 'COMPLETED' | 'CANCELLED';
+}
+
+const RESERVATIONS: SeedReservation[] = [
+  {
+    customerName: 'Alice Johnson',
+    customerEmail: 'alice.johnson@example.com',
+    tableNumber: 9,
+    guests: 6,
+    offsetMs: 25 * 60 * 60 * 1000,
+    notes: 'Anniversary celebration — window table requested.',
+    status: 'PENDING',
+  },
+  {
+    customerName: 'David Kim',
+    customerEmail: 'david.kim@example.com',
+    tableNumber: 6,
+    guests: 4,
+    offsetMs: 17 * 60 * 60 * 1000,
+    notes: 'Business lunch, prefers booth.',
+    status: 'CONFIRMED',
+  },
+  {
+    customerName: 'Emma Wilson',
+    customerEmail: 'emma.wilson@example.com',
+    phone: '+1 555 010 1005',
+    tableNumber: 1,
+    guests: 2,
+    offsetMs: -30 * 60 * 1000,
+    notes: 'Walk-in seated shortly after arrival.',
+    status: 'SEATED',
+  },
+  {
+    customerName: 'Bob Martinez',
+    customerEmail: 'bob.martinez@example.com',
+    tableNumber: 5,
+    guests: 2,
+    offsetMs: -2 * 24 * 60 * 60 * 1000,
+    notes: 'Cancelled by phone — peanut allergy noted on profile.',
+    status: 'CANCELLED',
+  },
+  {
+    customerName: 'Anniversary Party',
+    phone: '+1 555 010 9999',
+    guests: 8,
+    offsetMs: -3 * 24 * 60 * 60 * 1000,
+    notes: 'Group booking, corkage arranged.',
+    status: 'COMPLETED',
+  },
+];
+
 const RECIPES: SeedRecipe[] = [
   {
     menuItemName: 'Classic Cheeseburger',
@@ -561,6 +621,28 @@ async function main(): Promise<void> {
     ),
   );
 
+  const adminUser = await prisma.user.findFirst({ where: { email: 'admin@restaurant.com' }, select: { id: true } });
+  const customersByEmail = await prisma.customer.findMany({ select: { id: true, email: true } });
+  const customerIdByEmail = new Map(customersByEmail.map((customer) => [customer.email, customer.id]));
+  const tableIdByNumber = new Map((await prisma.restaurantTable.findMany({ select: { id: true, tableNumber: true } }))
+    .map((table) => [table.tableNumber, table.id]));
+
+  for (const reservation of RESERVATIONS) {
+    await prisma.reservation.create({
+      data: {
+        customerName: reservation.customerName,
+        phone: reservation.phone ?? null,
+        customerId: reservation.customerEmail ? (customerIdByEmail.get(reservation.customerEmail) ?? null) : null,
+        tableId: reservation.tableNumber != null ? (tableIdByNumber.get(reservation.tableNumber) ?? null) : null,
+        guests: reservation.guests,
+        date: new Date(Date.now() + reservation.offsetMs),
+        notes: reservation.notes ?? null,
+        status: reservation.status,
+        createdById: adminUser?.id ?? null,
+      },
+    });
+  }
+
   const categoryRecords = new Map<string, string>();
   for (const category of CATEGORIES) {
     const record = await prisma.menuCategory.create({
@@ -655,6 +737,7 @@ async function main(): Promise<void> {
     prisma.recipe.count(),
     prisma.recipeIngredient.count(),
     prisma.supplier.count(),
+    prisma.reservation.count(),
   ]);
 
   // eslint-disable-next-line no-console
@@ -666,7 +749,7 @@ async function main(): Promise<void> {
   // eslint-disable-next-line no-console
   console.log(`  tables: ${counts[5]}, sections: ${counts[6]}, inventory items: ${counts[7]}, customers: ${counts[8]}`);
   // eslint-disable-next-line no-console
-  console.log(`  recipes: ${counts[9]}, recipe ingredients: ${counts[10]}, suppliers: ${counts[11]}`);
+  console.log(`  recipes: ${counts[9]}, recipe ingredients: ${counts[10]}, suppliers: ${counts[11]}, reservations: ${counts[12]}`);
 }
 
 main()

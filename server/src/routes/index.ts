@@ -13,6 +13,7 @@ import inventoryRoutes from './inventory.routes.js';
 import recipeRoutes from './recipe.routes.js';
 import supplierRoutes from './supplier.routes.js';
 import purchaseRoutes from './purchase.routes.js';
+import reservationRoutes from './reservation.routes.js';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/inventory', inventoryRoutes);
 router.use('/recipes', recipeRoutes);
 router.use('/suppliers', supplierRoutes);
 router.use('/purchases', purchaseRoutes);
+router.use('/reservations', reservationRoutes);
 
 export default router;

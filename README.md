@@ -5,7 +5,7 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–11 complete — project setup/architecture, the full
+**Status:** Modules 1–12 complete — project setup/architecture, the full
 PostgreSQL database (schema, migration, seed), Authentication, Authorization
 &amp; user/role management, restaurant settings, table sections/floor plan,
 customer management, the menu (categories, items, variations, add-ons),
@@ -24,10 +24,14 @@ payment history on customer receipts — **inventory, recipes &amp;
 ingredients** — inventory item CRUD with stock health, a movement ledger
 (purchases/sales/wastage/returns/adjustments) with exact decimal math and
 negative-balance guards, recipe ingredient bills with derived dish costs, and
-seeded recipes wired to menu items — and **suppliers &amp; purchase
+seeded recipes wired to menu items — **suppliers &amp; purchase
 orders** — supplier CRUD, purchase orders (PENDING → RECEIVED/CANCELLED) with
 generated PO numbers that on receiving restock inventory, write PURCHASE
-ledger entries, and adopt weighted-average unit costs onto items.
+ledger entries, and adopt weighted-average unit costs onto items — and
+**reservations** — bookings with linked customers/walk-ins, optional table
+holds (two-hour windows with overlap and capacity guards), and a
+PENDING → CONFIRMED → SEATED → COMPLETED (+ CANCELLED) workflow that drives
+table status (RESERVED / OCCUPIED / CLEANING) as parties move through it.
 Every later module builds on the Prisma schema.
 
 ---
@@ -284,6 +288,12 @@ Base path: `/api/v1`
 | `PATCH /api/v1/purchases/:id` | Edit notes or replace lines of a PENDING order; re-totals (MANAGER/ADMIN; RECEIVED/CANCELLED → 409) |
 | `DELETE /api/v1/purchases/:id` | Delete a PENDING order (MANAGER/ADMIN; RECEIVED/CANCELLED → 409) |
 | `POST /api/v1/purchases/:id/status` | Advance PENDING → RECEIVED (restocks items via PURCHASE ledger rows, adopts weighted-average unit cost) or CANCELLED (MANAGER/ADMIN) |
+| `GET /api/v1/reservations` | List/search bookings (status, date range, text) + pagination (authenticated) |
+| `GET /api/v1/reservations/:id` | Booking detail with customer + table info (authenticated) |
+| `POST /api/v1/reservations` | Create a booking (PENDING); optional table hold with capacity + two-hour overlap guards (ADMIN/MANAGER/CASHIER/WAITER) |
+| `PATCH /api/v1/reservations/:id` | Edit a PENDING/CONFIRMED booking (name/phone/customer/table/party/date/notes); re-validates the table hold (ADMIN/MANAGER/CASHIER/WAITER; terminal statuses → 409) |
+| `POST /api/v1/reservations/:id/status` | Drive PENDING → CONFIRMED → SEATED → COMPLETED (+ CANCELLED); seating takes the table (OCCUPIED), completion sends it to CLEANING when free, cancel releases a still-RESERVED table (ADMIN/MANAGER/CASHIER/WAITER) |
+| `DELETE /api/v1/reservations/:id` | Delete a PENDING/CANCELLED booking and release its held table (MANAGER/ADMIN; SEATED/COMPLETED → 409) |
 
 > In development, `forgot-password` prints the reset link to the **server
 > console** instead of sending email (SMTP is optional).
@@ -384,7 +394,7 @@ docker compose -f docker-compose.prod.yml up --build
 9. ✅ **Payments + billing** — multi-method payments (cash/card/bank/other) with partial/split support, cash change handling, manager/admin refunds, payment ledger on receipts and order views
 10. ✅ **Inventory, recipes & ingredients** — inventory item CRUD with stock health, a movement ledger (PURCHASE/SALE/WASTAGE/RETURN/ADJUSTMENT) with exact decimal math and negative-balance guards, recipe ingredient bills with derived dish costs, and seeded recipes
 11. ✅ **Suppliers + purchases** — supplier CRUD, purchase orders (PENDING → RECEIVED/CANCELLED) with generated PO numbers; receiving restocks inventory with PURCHASE ledger entries and adopts weighted-average unit costs onto items
-12. Reservations
+12. ✅ **Reservations** — bookings with customer linking or walk-ins, optional table holds (two-hour windows with overlap and capacity guards), and a PENDING → CONFIRMED → SEATED → COMPLETED (+ CANCELLED) workflow driving table status
 13. Dashboard + reports + analytics
 14. Audit logs + security hardening
 15. Testing + documentation + production prep
