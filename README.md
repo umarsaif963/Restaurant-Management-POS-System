@@ -5,7 +5,7 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–10 complete — project setup/architecture, the full
+**Status:** Modules 1–11 complete — project setup/architecture, the full
 PostgreSQL database (schema, migration, seed), Authentication, Authorization
 &amp; user/role management, restaurant settings, table sections/floor plan,
 customer management, the menu (categories, items, variations, add-ons),
@@ -20,11 +20,14 @@ events (order/kitchen/table/customer) that keep every open view in sync, and
 a live kitchen production board — **payments &amp; billing** — multi-method
 payments (cash/card/bank/other) with split/partial payment support, cash
 change handling, manager/administrator refunds with a full payment ledger, and
-payment history on customer receipts — and **inventory, recipes &amp;
+payment history on customer receipts — **inventory, recipes &amp;
 ingredients** — inventory item CRUD with stock health, a movement ledger
 (purchases/sales/wastage/returns/adjustments) with exact decimal math and
 negative-balance guards, recipe ingredient bills with derived dish costs, and
-seeded recipes wired to menu items.
+seeded recipes wired to menu items — and **suppliers &amp; purchase
+orders** — supplier CRUD, purchase orders (PENDING → RECEIVED/CANCELLED) with
+generated PO numbers that on receiving restock inventory, write PURCHASE
+ledger entries, and adopt weighted-average unit costs onto items.
 Every later module builds on the Prisma schema.
 
 ---
@@ -270,6 +273,17 @@ Base path: `/api/v1`
 | `GET /api/v1/recipes/:id` | Recipe detail with ingredient costs (authenticated) |
 | `PATCH /api/v1/recipes/:id` | Update a recipe (name/yield/ingredients) (MANAGER/ADMIN) |
 | `DELETE /api/v1/recipes/:id` | Delete a recipe (menu item untouched) (MANAGER/ADMIN) |
+| `GET /api/v1/suppliers` | List/search suppliers (name/company/email) + pagination (authenticated) |
+| `POST /api/v1/suppliers` | Create a supplier (MANAGER/ADMIN) |
+| `GET /api/v1/suppliers/:id` | Supplier detail with purchase count (authenticated) |
+| `PATCH /api/v1/suppliers/:id` | Update a supplier (MANAGER/ADMIN) |
+| `DELETE /api/v1/suppliers/:id` | Delete a supplier with no purchase history (MANAGER/ADMIN; history → 409) |
+| `GET /api/v1/purchases` | List/search purchase orders (status filter) + pagination (authenticated) |
+| `POST /api/v1/purchases` | Create a PENDING purchase order with item lines; auto-generates a PO number and totals lines (MANAGER/ADMIN) |
+| `GET /api/v1/purchases/:id` | Purchase order detail with item lines (authenticated) |
+| `PATCH /api/v1/purchases/:id` | Edit notes or replace lines of a PENDING order; re-totals (MANAGER/ADMIN; RECEIVED/CANCELLED → 409) |
+| `DELETE /api/v1/purchases/:id` | Delete a PENDING order (MANAGER/ADMIN; RECEIVED/CANCELLED → 409) |
+| `POST /api/v1/purchases/:id/status` | Advance PENDING → RECEIVED (restocks items via PURCHASE ledger rows, adopts weighted-average unit cost) or CANCELLED (MANAGER/ADMIN) |
 
 > In development, `forgot-password` prints the reset link to the **server
 > console** instead of sending email (SMTP is optional).
@@ -369,7 +383,7 @@ docker compose -f docker-compose.prod.yml up --build
 8. ✅ **Kitchen Display System + Socket.IO workflow** — authenticated sockets, server-pushed domain events (order/kitchen/table/customer) invalidating open views, and a live KDS production board
 9. ✅ **Payments + billing** — multi-method payments (cash/card/bank/other) with partial/split support, cash change handling, manager/admin refunds, payment ledger on receipts and order views
 10. ✅ **Inventory, recipes & ingredients** — inventory item CRUD with stock health, a movement ledger (PURCHASE/SALE/WASTAGE/RETURN/ADJUSTMENT) with exact decimal math and negative-balance guards, recipe ingredient bills with derived dish costs, and seeded recipes
-11. Suppliers + purchases
+11. ✅ **Suppliers + purchases** — supplier CRUD, purchase orders (PENDING → RECEIVED/CANCELLED) with generated PO numbers; receiving restocks inventory with PURCHASE ledger entries and adopts weighted-average unit costs onto items
 12. Reservations
 13. Dashboard + reports + analytics
 14. Audit logs + security hardening

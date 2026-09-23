@@ -11,6 +11,8 @@ import { CustomersPage } from '@/pages/CustomersPage';
 import { MenuPage } from '@/pages/MenuPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { RecipesPage } from '@/pages/RecipesPage';
+import { SuppliersPage } from '@/pages/SuppliersPage';
+import { PurchasesPage } from '@/pages/PurchasesPage';
 import { POSPage } from '@/pages/POSPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { KitchenOrdersPage } from '@/pages/kitchen/KitchenOrdersPage';
@@ -110,6 +112,14 @@ export const router = createBrowserRouter([
       {
         path: 'recipes',
         element: <RecipesPage />,
+      },
+      {
+        path: 'suppliers',
+        element: <SuppliersPage />,
+      },
+      {
+        path: 'purchases',
+        element: <PurchasesPage />,
       },
       {
         path: 'customers',

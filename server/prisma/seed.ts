@@ -365,6 +365,12 @@ interface SeedRecipe {
   ingredients: { itemName: string; quantity: string }[];
 }
 
+const SUPPLIERS = [
+  { name: 'Fresh Farm Produce', company: 'Fresh Farm Ltd.', phone: '+1 555 010 8800', email: 'orders@freshfarm.example', address: '88 Farm Road, Rural', notes: 'Vegetables, fruit and dairy. Net-30 terms.' },
+  { name: 'Meat & More', company: 'Meat & More Co.', phone: '+1 555 010 8810', email: 'sales@meatandmore.example', address: '110 Butcher Ave, Industrial Park', notes: 'Beef, poultry and pork. Call by 4pm for next-day delivery.' },
+  { name: 'City Pantry Wholesale', company: 'City Pantry Inc.', phone: '+1 555 010 8820', email: 'accounts@citypantry.example', address: '5 Warehouse Blvd, Commerce District', notes: 'Dry goods, oils and beverages. Weekly standing order.' },
+];
+
 const RECIPES: SeedRecipe[] = [
   {
     menuItemName: 'Classic Cheeseburger',
@@ -602,6 +608,21 @@ async function main(): Promise<void> {
 
   const inventoryByName = await prisma.inventoryItem.findMany({ select: { id: true, name: true } });
   const inventoryIdByName = new Map(inventoryByName.map((item) => [item.name, item.id]));
+
+  await Promise.all(
+    SUPPLIERS.map((supplier) =>
+      prisma.supplier.create({
+        data: {
+          name: supplier.name,
+          company: supplier.company,
+          phone: supplier.phone,
+          email: supplier.email,
+          address: supplier.address,
+          notes: supplier.notes,
+        },
+      }),
+    ),
+  );
   for (const recipe of RECIPES) {
     const menuItem = await prisma.menuItem.findFirst({ where: { name: recipe.menuItemName }, select: { id: true } });
     if (!menuItem) throw new Error(`Unknown menu item for recipe: ${recipe.menuItemName}`);
@@ -633,6 +654,7 @@ async function main(): Promise<void> {
     prisma.customer.count(),
     prisma.recipe.count(),
     prisma.recipeIngredient.count(),
+    prisma.supplier.count(),
   ]);
 
   // eslint-disable-next-line no-console
@@ -644,7 +666,7 @@ async function main(): Promise<void> {
   // eslint-disable-next-line no-console
   console.log(`  tables: ${counts[5]}, sections: ${counts[6]}, inventory items: ${counts[7]}, customers: ${counts[8]}`);
   // eslint-disable-next-line no-console
-  console.log(`  recipes: ${counts[9]}, recipe ingredients: ${counts[10]}`);
+  console.log(`  recipes: ${counts[9]}, recipe ingredients: ${counts[10]}, suppliers: ${counts[11]}`);
 }
 
 main()

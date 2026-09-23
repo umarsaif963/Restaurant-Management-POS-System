@@ -810,3 +810,94 @@ export interface ListRecipesQuery {
   limit?: number;
   search?: string;
 }
+
+// ===========================================================================
+// Module 11 — Suppliers & purchases
+// ===========================================================================
+
+export const PURCHASE_STATUSES = ['PENDING', 'RECEIVED', 'CANCELLED'] as const;
+export type PurchaseStatus = (typeof PURCHASE_STATUSES)[number];
+
+export interface SupplierProfile {
+  id: string;
+  name: string;
+  company: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+  purchaseCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseItemProfile {
+  id: string;
+  inventoryItemId: string;
+  itemName: string;
+  unit: StockUnit;
+  quantity: string;
+  unitCost: string;
+  amount: string;
+}
+
+export interface PurchaseProfile {
+  id: string;
+  purchaseNumber: string;
+  supplierId: string;
+  supplierName: string;
+  status: PurchaseStatus;
+  totalAmount: string;
+  notes: string | null;
+  receivedAt: string | null;
+  items: PurchaseItemProfile[];
+  itemCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSupplierInput {
+  name: string;
+  company?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateSupplierInput {
+  name?: string;
+  company?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}
+
+export interface CreatePurchaseInput {
+  supplierId: string;
+  notes?: string | null;
+  items: { inventoryItemId: string; quantity: string; unitCost: string }[];
+}
+
+export interface UpdatePurchaseInput {
+  notes?: string | null;
+  items?: { inventoryItemId: string; quantity: string; unitCost: string }[];
+}
+
+export interface ChangePurchaseStatusInput {
+  status: Extract<PurchaseStatus, 'RECEIVED' | 'CANCELLED'>;
+}
+
+export interface ListSuppliersQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface ListPurchasesQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: PurchaseStatus;
+}
