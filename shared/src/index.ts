@@ -667,3 +667,146 @@ export interface TableUpdatedPayload {
 export interface CustomerUpdatedPayload {
   customerId?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Inventory, recipes & ingredients (module 10)
+// ---------------------------------------------------------------------------
+
+export const STOCK_UNITS = ['KG', 'GRAM', 'LITER', 'ML', 'PIECE', 'PACK'] as const;
+export type StockUnit = (typeof STOCK_UNITS)[number];
+
+export const INVENTORY_TRANSACTION_TYPES = ['PURCHASE', 'SALE', 'ADJUSTMENT', 'WASTAGE', 'RETURN'] as const;
+export type InventoryTransactionType = (typeof INVENTORY_TRANSACTION_TYPES)[number];
+
+/** Derived stock health, computed client + server side from quantity vs min. */
+export type StockHealth = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+
+export interface InventoryItemProfile {
+  id: string;
+  name: string;
+  sku: string | null;
+  unit: StockUnit;
+  quantity: string;
+  minQuantity: string;
+  costPrice: string;
+  category: string | null;
+  supplierName: string | null;
+  expiryDate: string | null;
+  isActive: boolean;
+  health: StockHealth;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryTransactionProfile {
+  id: string;
+  inventoryItemId: string;
+  itemName: string;
+  type: InventoryTransactionType;
+  quantity: string;
+  balanceAfter: string | null;
+  unitCost: string | null;
+  note: string | null;
+  userName: string | null;
+  createdAt: string;
+}
+
+export interface RecipeIngredientProfile {
+  id: string;
+  inventoryItemId: string;
+  itemName: string;
+  unit: StockUnit;
+  quantity: string;
+  costPrice: string;
+  lineCost: string;
+}
+
+export interface RecipeProfile {
+  id: string;
+  menuItemId: string;
+  menuItemName: string;
+  menuItemPrice: string;
+  name: string;
+  yield: number;
+  totalCost: string;
+  costPerUnit: string;
+  hasIngredients: boolean;
+  ingredients: RecipeIngredientProfile[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---- Inputs ----
+
+export interface CreateInventoryItemInput {
+  name: string;
+  sku?: string | null;
+  unit: StockUnit;
+  quantity?: string;
+  minQuantity?: string;
+  costPrice?: string;
+  category?: string | null;
+  expiryDate?: string | null;
+  isActive?: boolean;
+}
+
+export interface UpdateInventoryItemInput {
+  name?: string;
+  sku?: string | null;
+  unit?: StockUnit;
+  minQuantity?: string;
+  costPrice?: string;
+  category?: string | null;
+  expiryDate?: string | null;
+  isActive?: boolean;
+}
+
+/**
+ * A stock movement against an inventory item. `quantity` is the number of
+ * units moved (always positive); the type decides the direction added to the
+ * balance (PURCHASE/RETURN increase, SALE/WASTAGE decrease, ADJUSTMENT is an
+ * explicit signed set of the new balance instead).
+ */
+export interface RecordInventoryTransactionInput {
+  type: InventoryTransactionType;
+  quantity?: string;
+  note?: string | null;
+  unitCost?: string;
+}
+
+export interface CreateRecipeInput {
+  menuItemId: string;
+  name: string;
+  yield?: number;
+  ingredients: { inventoryItemId: string; quantity: string }[];
+}
+
+export interface UpdateRecipeInput {
+  name?: string;
+  yield?: number;
+  ingredients?: { inventoryItemId: string; quantity: string }[];
+}
+
+// ---- Queries ----
+
+export interface ListInventoryItemsQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  category?: string;
+  health?: StockHealth;
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface ListInventoryTransactionsQuery {
+  itemId?: string;
+  type?: InventoryTransactionType;
+  page?: number;
+  limit?: number;
+}
+
+export interface ListRecipesQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+}

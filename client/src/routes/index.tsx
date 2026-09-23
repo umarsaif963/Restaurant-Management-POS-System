@@ -9,6 +9,8 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { TablesPage } from '@/pages/TablesPage';
 import { CustomersPage } from '@/pages/CustomersPage';
 import { MenuPage } from '@/pages/MenuPage';
+import { InventoryPage } from '@/pages/InventoryPage';
+import { RecipesPage } from '@/pages/RecipesPage';
 import { POSPage } from '@/pages/POSPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { KitchenOrdersPage } from '@/pages/kitchen/KitchenOrdersPage';
@@ -100,6 +102,14 @@ export const router = createBrowserRouter([
       {
         path: 'menu',
         element: <MenuPage />,
+      },
+      {
+        path: 'inventory',
+        element: <InventoryPage />,
+      },
+      {
+        path: 'recipes',
+        element: <RecipesPage />,
       },
       {
         path: 'customers',

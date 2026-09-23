@@ -1,5 +1,7 @@
 import {
   Activity,
+  BookOpenText,
+  Boxes,
   ChefHat,
   LayoutGrid,
   MonitorPlay,
@@ -83,6 +85,16 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Menu',
         to: '/menu',
         icon: UtensilsCrossed,
+      },
+      {
+        label: 'Inventory',
+        to: '/inventory',
+        icon: Boxes,
+      },
+      {
+        label: 'Recipes',
+        to: '/recipes',
+        icon: BookOpenText,
       },
       {
         label: 'Tables',

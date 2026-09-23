@@ -358,6 +358,85 @@ const INVENTORY_ITEMS: SeedInventoryItem[] = [
   { name: 'Eggs', sku: 'ING-021', unit: StockUnit.PIECE, quantity: '120', minQuantity: '40', costPrice: '0.15', category: 'Dairy' },
 ];
 
+interface SeedRecipe {
+  menuItemName: string;
+  name: string;
+  yield: number;
+  ingredients: { itemName: string; quantity: string }[];
+}
+
+const RECIPES: SeedRecipe[] = [
+  {
+    menuItemName: 'Classic Cheeseburger',
+    name: 'Classic Cheeseburger',
+    yield: 1,
+    ingredients: [
+      { itemName: 'Burger Buns', quantity: '1' },
+      { itemName: 'Beef Patty', quantity: '1' },
+      { itemName: 'Cheese Slices', quantity: '1' },
+    ],
+  },
+  {
+    menuItemName: 'BBQ Bacon Burger',
+    name: 'BBQ Bacon Burger',
+    yield: 1,
+    ingredients: [
+      { itemName: 'Burger Buns', quantity: '1' },
+      { itemName: 'Beef Patty', quantity: '1' },
+      { itemName: 'Cheese Slices', quantity: '1' },
+      { itemName: 'Bacon Strips', quantity: '2' },
+      { itemName: 'BBQ Sauce', quantity: '0.030' },
+    ],
+  },
+  {
+    menuItemName: 'Margherita Pizza',
+    name: 'Margherita Pizza',
+    yield: 1,
+    ingredients: [
+      { itemName: 'Pizza Dough', quantity: '1' },
+      { itemName: 'Mozzarella', quantity: '0.120' },
+      { itemName: 'Tomato Sauce', quantity: '0.150' },
+    ],
+  },
+  {
+    menuItemName: 'Pepperoni Pizza',
+    name: 'Pepperoni Pizza',
+    yield: 1,
+    ingredients: [
+      { itemName: 'Pizza Dough', quantity: '1' },
+      { itemName: 'Mozzarella', quantity: '0.120' },
+      { itemName: 'Tomato Sauce', quantity: '0.150' },
+    ],
+  },
+  {
+    menuItemName: 'Chicken Fried Rice',
+    name: 'Chicken Fried Rice',
+    yield: 1,
+    ingredients: [
+      { itemName: 'Rice', quantity: '0.250' },
+      { itemName: 'Chicken Breast', quantity: '0.150' },
+      { itemName: 'Eggs', quantity: '1' },
+      { itemName: 'Cooking Oil', quantity: '0.020' },
+    ],
+  },
+  {
+    menuItemName: 'Chocolate Lava Cake',
+    name: 'Chocolate Lava Cake',
+    yield: 4,
+    ingredients: [
+      { itemName: 'Flour', quantity: '0.300' },
+      { itemName: 'Cocoa Powder', quantity: '0.120' },
+      { itemName: 'Eggs', quantity: '4' },
+    ],
+  },
+  {
+    menuItemName: 'Fresh Orange Juice',
+    name: 'Fresh Orange Juice',
+    yield: 1,
+    ingredients: [{ itemName: 'Oranges', quantity: '0.300' }],
+  },
+];
+
 async function clearDatabase(): Promise<void> {
   await prisma.$transaction([
     prisma.payment.deleteMany(),
@@ -521,6 +600,27 @@ async function main(): Promise<void> {
     ),
   );
 
+  const inventoryByName = await prisma.inventoryItem.findMany({ select: { id: true, name: true } });
+  const inventoryIdByName = new Map(inventoryByName.map((item) => [item.name, item.id]));
+  for (const recipe of RECIPES) {
+    const menuItem = await prisma.menuItem.findFirst({ where: { name: recipe.menuItemName }, select: { id: true } });
+    if (!menuItem) throw new Error(`Unknown menu item for recipe: ${recipe.menuItemName}`);
+    await prisma.recipe.create({
+      data: {
+        menuItemId: menuItem.id,
+        name: recipe.name,
+        yield: recipe.yield,
+        ingredients: {
+          create: recipe.ingredients.map((ingredient) => {
+            const id = inventoryIdByName.get(ingredient.itemName);
+            if (!id) throw new Error(`Unknown ingredient for recipe: ${recipe.name} -> ${ingredient.itemName}`);
+            return { inventoryItemId: id, quantity: ingredient.quantity };
+          }),
+        },
+      },
+    });
+  }
+
   const counts = await prisma.$transaction([
     prisma.user.count(),
     prisma.menuCategory.count(),
@@ -531,6 +631,8 @@ async function main(): Promise<void> {
     prisma.tableSection.count(),
     prisma.inventoryItem.count(),
     prisma.customer.count(),
+    prisma.recipe.count(),
+    prisma.recipeIngredient.count(),
   ]);
 
   // eslint-disable-next-line no-console
@@ -541,6 +643,8 @@ async function main(): Promise<void> {
   console.log(`  users: ${counts[0]}, categories: ${counts[1]}, menu items: ${counts[2]}, variations: ${counts[3]}, add-ons: ${counts[4]}`);
   // eslint-disable-next-line no-console
   console.log(`  tables: ${counts[5]}, sections: ${counts[6]}, inventory items: ${counts[7]}, customers: ${counts[8]}`);
+  // eslint-disable-next-line no-console
+  console.log(`  recipes: ${counts[9]}, recipe ingredients: ${counts[10]}`);
 }
 
 main()

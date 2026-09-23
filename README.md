@@ -5,7 +5,7 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–9 complete — project setup/architecture, the full
+**Status:** Modules 1–10 complete — project setup/architecture, the full
 PostgreSQL database (schema, migration, seed), Authentication, Authorization
 &amp; user/role management, restaurant settings, table sections/floor plan,
 customer management, the menu (categories, items, variations, add-ons),
@@ -17,10 +17,14 @@ kitchen ticket board with a dedicated status workflow, printable customer
 receipts and kitchen tickets — the **Kitchen Display System (KDS) with a
 real-time Socket.IO workflow** — authenticated sockets, server-pushed domain
 events (order/kitchen/table/customer) that keep every open view in sync, and
-a live kitchen production board — and **payments &amp; billing** — multi-method
+a live kitchen production board — **payments &amp; billing** — multi-method
 payments (cash/card/bank/other) with split/partial payment support, cash
 change handling, manager/administrator refunds with a full payment ledger, and
-payment history on customer receipts.
+payment history on customer receipts — and **inventory, recipes &amp;
+ingredients** — inventory item CRUD with stock health, a movement ledger
+(purchases/sales/wastage/returns/adjustments) with exact decimal math and
+negative-balance guards, recipe ingredient bills with derived dish costs, and
+seeded recipes wired to menu items.
 Every later module builds on the Prisma schema.
 
 ---
@@ -251,6 +255,21 @@ Base path: `/api/v1`
 | `GET /api/v1/kitchen-orders` | List kitchen tickets (status, orderId) + pagination (authenticated) |
 | `GET /api/v1/kitchen-orders/:id` | Kitchen ticket detail with item snapshots (authenticated) |
 | `POST /api/v1/kitchen-orders/:id/status` | Advance a ticket (ACCEPTED → PREPARING → READY → SERVED → COMPLETED; cancel allowed early) (KITCHEN_STAFF/MANAGER/ADMIN) |
+| `GET /api/v1/orders/:id/payments` | Payment ledger for an order (authenticated) |
+| `POST /api/v1/orders/:id/payments` | Record a payment (cash/card/bank/other; cash supports tendered + change; net paid derives status) (ADMIN/MANAGER/CASHIER/WAITER) |
+| `POST /api/v1/orders/:id/payments/:paymentId/refund` | Refund a payment (isRefund row + net-paid re-derivation) (MANAGER/ADMIN) |
+| `GET /api/v1/inventory/items` | List/search inventory items (status/health filters) + pagination (authenticated) |
+| `POST /api/v1/inventory/items` | Create an inventory item (MANAGER/ADMIN) |
+| `GET /api/v1/inventory/items/:id` | Inventory item detail (authenticated) |
+| `PATCH /api/v1/inventory/items/:id` | Update an item (MANAGER/ADMIN) |
+| `DELETE /api/v1/inventory/items/:id` | Delete an item + its ledger (cascade) (MANAGER/ADMIN) |
+| `POST /api/v1/inventory/items/:id/transactions` | Record a stock movement (PURCHASE/RETURN add, SALE/WASTAGE subtract, ADJUSTMENT sets balance; negative balance → 409) (MANAGER/ADMIN) |
+| `GET /api/v1/inventory/transactions` | Movement ledger (item/type filters) + pagination (authenticated) |
+| `GET /api/v1/recipes` | List/search recipes (name/menu item) + pagination (authenticated) |
+| `POST /api/v1/recipes` | Create a recipe with ingredient lines (one per menu item; unknown item/ingredient → 400, duplicate → 409) (MANAGER/ADMIN) |
+| `GET /api/v1/recipes/:id` | Recipe detail with ingredient costs (authenticated) |
+| `PATCH /api/v1/recipes/:id` | Update a recipe (name/yield/ingredients) (MANAGER/ADMIN) |
+| `DELETE /api/v1/recipes/:id` | Delete a recipe (menu item untouched) (MANAGER/ADMIN) |
 
 > In development, `forgot-password` prints the reset link to the **server
 > console** instead of sending email (SMTP is optional).
@@ -349,7 +368,7 @@ docker compose -f docker-compose.prod.yml up --build
 7. ✅ **Customer receipts, kitchen tickets & printing** — automated kitchen tickets on confirm, ticket state machine + kitchen board, printable receipts/tickets
 8. ✅ **Kitchen Display System + Socket.IO workflow** — authenticated sockets, server-pushed domain events (order/kitchen/table/customer) invalidating open views, and a live KDS production board
 9. ✅ **Payments + billing** — multi-method payments (cash/card/bank/other) with partial/split support, cash change handling, manager/admin refunds, payment ledger on receipts and order views
-10. Inventory, recipes, ingredients
+10. ✅ **Inventory, recipes & ingredients** — inventory item CRUD with stock health, a movement ledger (PURCHASE/SALE/WASTAGE/RETURN/ADJUSTMENT) with exact decimal math and negative-balance guards, recipe ingredient bills with derived dish costs, and seeded recipes
 11. Suppliers + purchases
 12. Reservations
 13. Dashboard + reports + analytics
