@@ -578,7 +578,53 @@ export interface ReceiptView {
   showServiceChargeOnReceipt: boolean;
   serviceChargePct: string;
   taxPercentage: string;
+  payments: PaymentProfile[];
   printedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Payments & billing (module 9)
+// ---------------------------------------------------------------------------
+
+export const PAYMENT_METHODS = ['CASH', 'CARD', 'BANK_TRANSFER', 'OTHER'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export interface PaymentProfile {
+  id: string;
+  orderId: string;
+  amount: string;
+  method: PaymentMethod;
+  transactionRef: string | null;
+  receivedByName: string | null;
+  changeDue: string | null;
+  notes: string | null;
+  isRefund: boolean;
+  refundOfId: string | null;
+  paidAt: string;
+}
+
+export interface RecordPaymentInput {
+  amount: string;
+  method: PaymentMethod;
+  transactionRef?: string | null;
+  notes?: string | null;
+}
+
+export interface RefundPaymentInput {
+  amount: string;
+  method?: PaymentMethod;
+  transactionRef?: string | null;
+  notes?: string | null;
+}
+
+export interface PaymentRecordResult {
+  payment: PaymentProfile;
+  order: OrderProfile;
+}
+
+export interface PaymentRefundResult {
+  refund: PaymentProfile;
+  order: OrderProfile;
 }
 
 // ---------------------------------------------------------------------------

@@ -5,7 +5,7 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–8 complete — project setup/architecture, the full
+**Status:** Modules 1–9 complete — project setup/architecture, the full
 PostgreSQL database (schema, migration, seed), Authentication, Authorization
 &amp; user/role management, restaurant settings, table sections/floor plan,
 customer management, the menu (categories, items, variations, add-ons),
@@ -14,10 +14,13 @@ the **Point of Sale (order creation + order management)** — line-item pricing
 customer lifecycle and order status workflow, **customer receipts, kitchen
 tickets &amp; printing** — automatic kitchen tickets on order confirmation, a
 kitchen ticket board with a dedicated status workflow, printable customer
-receipts and kitchen tickets — and the **Kitchen Display System (KDS) with a
+receipts and kitchen tickets — the **Kitchen Display System (KDS) with a
 real-time Socket.IO workflow** — authenticated sockets, server-pushed domain
 events (order/kitchen/table/customer) that keep every open view in sync, and
-a live kitchen production board.
+a live kitchen production board — and **payments &amp; billing** — multi-method
+payments (cash/card/bank/other) with split/partial payment support, cash
+change handling, manager/administrator refunds with a full payment ledger, and
+payment history on customer receipts.
 Every later module builds on the Prisma schema.
 
 ---
@@ -345,7 +348,7 @@ docker compose -f docker-compose.prod.yml up --build
 6. ✅ **Point of Sale — order creation + order management** — order number generation, item pricing (variations/add-ons/tax), dine-in/takeaway/delivery, status workflow with table & customer side-effects, POS + Orders UI
 7. ✅ **Customer receipts, kitchen tickets & printing** — automated kitchen tickets on confirm, ticket state machine + kitchen board, printable receipts/tickets
 8. ✅ **Kitchen Display System + Socket.IO workflow** — authenticated sockets, server-pushed domain events (order/kitchen/table/customer) invalidating open views, and a live KDS production board
-9. Payments + billing
+9. ✅ **Payments + billing** — multi-method payments (cash/card/bank/other) with partial/split support, cash change handling, manager/admin refunds, payment ledger on receipts and order views
 10. Inventory, recipes, ingredients
 11. Suppliers + purchases
 12. Reservations

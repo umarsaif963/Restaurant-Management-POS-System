@@ -11,10 +11,12 @@ import {
   useRemoveOrderItemMutation,
   useUpdateOrderStatusMutation,
 } from '@/store/api/orderApi';
+import { useListOrderPaymentsQuery, useRecordPaymentMutation, useRefundPaymentMutation } from '@/store/api/paymentApi';
 import { useListCategoriesQuery, useListItemsQuery } from '@/store/api/menuApi';
 import { useAppSelector } from '@/store/hooks';
 import { useToast } from '@/hooks/useToast';
 import { useDebounce } from '@/hooks/useDebounce';
+import { PAYMENT_METHOD_ORDER, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_BADGE } from '@/constants/payment';
 import {
   ORDER_STATUS_BADGE,
   ORDER_STATUS_LABELS,
@@ -56,6 +58,25 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
   const [picking, setPicking] = useState<MenuItemProfile | null>(null);
   const [cancelArmed, setCancelArmed] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+
+  // payments (module 9)
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [method, setMethod] = useState<'CASH' | 'CARD' | 'BANK_TRANSFER' | 'OTHER'>('CASH');
+  const [tendered, setTendered] = useState('');
+  const [notes, setNotes] = useState('');
+  const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [showRefundInput, setShowRefundInput] = useState<string | null>(null);
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundNotes, setRefundNotes] = useState('');
+  const [submittingRefund, setSubmittingRefund] = useState(false);
+
+  const { data: payments, isFetching: paymentsFetching } = useListOrderPaymentsQuery(orderId ?? '', {
+    skip: !orderId,
+  });
+
+  const [recordPayment] = useRecordPaymentMutation();
+  const [refundPayment] = useRefundPaymentMutation();
 
   const debouncedSearch = useDebounce(search, 250);
   const { data: items } = useListItemsQuery(
@@ -123,6 +144,48 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
       toast.error('Could not update status', error instanceof Error ? error.message : 'The transition was rejected.');
     }
   }
+
+  async function handleRecordPayment() {
+    if (!order) return;
+    setSubmittingPayment(true);
+    try {
+      // For cash, the entered "tendered" can exceed the balance — the server
+      // applies only the balance and records the change. For card/bank, the
+      // amount is applied exactly as entered (partial payments supported).
+      const appliedAmount = method === 'CASH' && tendered ? tendered : amount;
+      const body = { amount: appliedAmount, method, notes: notes || undefined };
+      await recordPayment({ id: order.id, ...body }).unwrap();
+      toast.success('Payment recorded', `${PAYMENT_METHOD_LABELS[method]} of ${body.amount} accepted.`);
+      setAmount('');
+      setTendered('');
+      setNotes('');
+      setShowPaymentHistory(true);
+    } catch (error) {
+      toast.error('Could not record payment', error instanceof Error ? error.message : 'The payment was rejected.');
+    } finally {
+      setSubmittingPayment(false);
+    }
+  }
+
+  async function handleRefund(paymentId: string, paymentAmount: string) {
+    if (!order) return;
+    setSubmittingRefund(true);
+    try {
+      const body = { amount: refundAmount || paymentAmount, notes: refundNotes || undefined };
+      await refundPayment({ id: order.id, paymentId, body }).unwrap();
+      toast.success('Refund recorded', `$${Number(refundAmount || paymentAmount).toFixed(2)} refunded.`);
+      setShowRefundInput(null);
+      setRefundAmount('');
+      setRefundNotes('');
+    } catch (error) {
+      toast.error('Could not process refund', error instanceof Error ? error.message : 'The refund was rejected.');
+    } finally {
+      setSubmittingRefund(false);
+    }
+  }
+
+  const canRecordPayment = canOperate && order && order.status !== 'CANCELLED' && Number(order.balanceDue) > 0;
+  const isManagerOrAdmin = currentUser ? ['ADMIN', 'MANAGER'].includes(currentUser.role) : false;
 
   return (
     <Modal open={orderId !== null} title={order ? `Order ${order.orderNumber}` : 'Order'} onClose={onClose} maxWidthClass="max-w-3xl">
@@ -357,6 +420,173 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
               </div>
             )}
           </section>
+
+          {/* ---- payments (module 9) ---- */}
+          {canOperate && canRecordPayment && (
+            <section className="space-y-3 border-t border-slate-100 pt-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Collect payment
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-500">Amount ($)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className="input"
+                    placeholder={order.balanceDue}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500">Method</label>
+                  <select
+                    className="input"
+                    value={method}
+                    onChange={(e) => setMethod(e.target.value as 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'OTHER')}
+                  >
+                    {PAYMENT_METHOD_ORDER.map((m) => (
+                      <option key={m} value={m}>
+                        {PAYMENT_METHOD_LABELS[m]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {method === 'CASH' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-slate-500">Cash tendered ($)</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className="input"
+                      placeholder={order.balanceDue}
+                      value={tendered}
+                      onChange={(e) => setTendered(e.target.value)}
+                    />
+                  </div>
+                  {tendered && Number(tendered) > Number(amount || order.balanceDue) && (
+                    <div className="flex items-center text-sm text-green-700">
+                      Change due: ${(Number(tendered) - Number(amount || order.balanceDue)).toFixed(2)}
+                    </div>
+                  )}
+                </div>
+              )}
+              <div>
+                <label className="block text-xs text-slate-500">Notes</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Optional"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                disabled={submittingPayment || !amount}
+                className="btn-primary"
+                onClick={handleRecordPayment}
+              >
+                {submittingPayment ? 'Recording…' : `Record ${PAYMENT_METHOD_LABELS[method]} payment`}
+              </button>
+            </section>
+          )}
+
+          {/* payment history */}
+          {order && (
+            <section className="space-y-2 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                className="btn-secondary w-full text-left"
+                onClick={() => setShowPaymentHistory((v) => !v)}
+              >
+                {showPaymentHistory ? 'Hide' : 'Show'} payment history ({payments?.length ?? 0})
+              </button>
+              {showPaymentHistory && (
+                <div className="space-y-2">
+                  {paymentsFetching ? (
+                    <Spinner />
+                  ) : !payments?.length ? (
+                    <p className="text-sm text-slate-400">No payments recorded yet.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {payments.map((p) => (
+                        <li key={p.id} className="flex items-center justify-between rounded-lg border border-slate-100 p-2 text-sm">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Badge variant={PAYMENT_METHOD_BADGE[p.method]}>
+                                {PAYMENT_METHOD_LABELS[p.method]}
+                              </Badge>
+                              <span className="font-semibold text-slate-800">${p.amount}</span>
+                              {p.isRefund && (
+                                <Badge variant="red">Refund of {p.refundOfId?.slice(0, 8)}</Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {p.receivedByName ?? '—'} · {new Date(p.paidAt).toLocaleTimeString()}
+                            </div>
+                            {p.changeDue ? (
+                              <div className="text-xs text-green-700">Change ${p.changeDue}</div>
+                            ) : null}
+                          </div>
+                          {!p.isRefund && isManagerOrAdmin && (
+                            <div className="shrink-0">
+                              {showRefundInput === p.id ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    className="input w-20"
+                                    placeholder={p.amount}
+                                    value={refundAmount}
+                                    onChange={(e) => setRefundAmount(e.target.value)}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn-danger px-2 py-1 text-xs"
+                                    disabled={submittingRefund}
+                                    onClick={() => handleRefund(p.id, p.amount)}
+                                  >
+                                    {submittingRefund ? '…' : 'Refund'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn-secondary px-2 py-1 text-xs"
+                                    onClick={() => {
+                                      setShowRefundInput(null);
+                                      setRefundAmount('');
+                                      setRefundNotes('');
+                                    }}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn-danger px-2 py-1 text-xs"
+                                  onClick={() => {
+                                    setShowRefundInput(p.id);
+                                    setRefundAmount('');
+                                    setRefundNotes('');
+                                  }}
+                                >
+                                  Refund
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
 
           {canOperate && !cancelArmed && (
             <section className="border-t border-slate-100 pt-3">

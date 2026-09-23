@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { useGetReceiptQuery } from '@/store/api/orderApi';
+import { useListOrderPaymentsQuery } from '@/store/api/paymentApi';
 import { Spinner } from '@/components/ui/Spinner';
+import { PAYMENT_METHOD_LABELS } from '@/constants/payment';
+import { PAYMENT_STATUS_LABELS } from '@/constants/order';
 
 function money(value: string | number): string {
   const amount = typeof value === 'string' ? parseFloat(value) : value;
@@ -23,6 +26,7 @@ export function PrintReceiptPage() {
   const [printed, setPrinted] = useState(false);
 
   const { data: receipt, isError, error } = useGetReceiptQuery(orderId ?? '', { skip: !orderId });
+  const { data: payments, isFetching } = useListOrderPaymentsQuery(orderId ?? '', { skip: !orderId });
 
   useEffect(() => {
     if (receipt && !printed) {
@@ -193,6 +197,35 @@ export function PrintReceiptPage() {
               </div>
             )}
           </section>
+
+          {/* payment history (module 9) */}
+          {!isFetching && payments && payments.length > 0 && (
+            <section className="border-b border-dashed border-slate-300 py-3 text-xs text-slate-700">
+              <div className="mb-2 flex justify-between text-xs font-bold uppercase tracking-wider text-slate-500">
+                <span>Payment method</span>
+                <span>Amount</span>
+              </div>
+              <ul className="space-y-1">
+                {payments.map((p) => (
+                  <li key={p.id} className="flex justify-between">
+                    <span>
+                      {PAYMENT_METHOD_LABELS[p.method]}
+                      {p.isRefund ? ' (refund)' : ''}
+                    </span>
+                    <span>{money(p.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-2 flex justify-between border-t border-dashed border-slate-300 pt-1 text-sm font-semibold">
+                <span>Net paid</span>
+                <span>{money(order.totalPaid)}</span>
+              </div>
+              <div className="flex justify-between text-slate-500">
+                <span>Status</span>
+                <span>{PAYMENT_STATUS_LABELS[order.paymentStatus]}</span>
+              </div>
+            </section>
+          )}
 
           <footer className="pt-4 text-center">
             {receipt.receiptFooter && (

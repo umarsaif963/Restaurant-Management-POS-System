@@ -15,6 +15,9 @@ import { useAppDispatch } from '@/store/hooks';
  * invalidations. Subscribed queries (orders, kitchen display, tables,
  * customers) refetch as soon as an event arrives, keeping every open view in
  * sync without polling. Mounted once inside the authenticated layout.
+ *
+ * Payments (module 9): any order mutation also invalidates the Payments
+ * tag so the collect-payment history stays live.
  */
 export function useRealtimeSync() {
   const dispatch = useAppDispatch();
@@ -23,7 +26,12 @@ export function useRealtimeSync() {
     const socket = connectSocket();
 
     const onOrderUpdated = (payload: OrderUpdatedPayload) => {
-      dispatch(apiSlice.util.invalidateTags([{ type: 'Orders', id: payload.orderId }]));
+      dispatch(
+        apiSlice.util.invalidateTags([
+          { type: 'Orders', id: payload.orderId },
+          { type: 'Payments', id: payload.orderId },
+        ]),
+      );
     };
     const onKitchenCreated = (_payload: KitchenCreatedPayload) => {
       dispatch(apiSlice.util.invalidateTags(['KitchenOrders']));

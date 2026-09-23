@@ -13,6 +13,7 @@ import { OrderStatus, Prisma, type Order } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { fromCents, percentOf, toCents } from '../utils/money.js';
+import { derivePaymentStatus } from '../utils/billing.js';
 import { realtime } from '../sockets/realtime.js';
 
 const ALLOW_ITEM_EDITS: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CONFIRMED];
@@ -406,6 +407,8 @@ async function recalcTotals(orderId: string) {
   const storedDiscount = order.discountAmount.toString();
   const discount = storedDiscount === '0' || storedDiscount === '0.00' ? undefined : storedDiscount;
   const totals = orderTotals(subtotalCents, taxCents, discount, settings.serviceChargePct.toString(), order.orderType);
+  const paidCents = toCents(order.totalPaid.toString());
+  const refundCount = await prisma.payment.count({ where: { orderId, isRefund: true } });
   return prisma.order.update({
     where: { id: orderId },
     data: {
@@ -413,7 +416,12 @@ async function recalcTotals(orderId: string) {
       taxAmount: fromCents(taxCents),
       serviceChargeAmount: fromCents(totals.serviceChargeCents),
       grandTotal: fromCents(totals.grandTotalCents),
-      balanceDue: fromCents(totals.grandTotalCents),
+      balanceDue: fromCents(Math.max(0, totals.grandTotalCents - paidCents)),
+      paymentStatus: derivePaymentStatus({
+        netPaidCents: paidCents,
+        grandTotalCents: totals.grandTotalCents,
+        hasRefunds: refundCount > 0,
+      }),
     },
     include: orderInclude(),
   });
