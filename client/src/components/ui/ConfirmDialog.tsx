@@ -28,13 +28,13 @@ export function ConfirmDialog({
       aria-modal="true"
     >
       <div
-        className="absolute inset-0 bg-slate-900/50"
+        className="absolute inset-0 animate-fade-in bg-slate-900/40 backdrop-blur-[2px]"
         onClick={onCancel}
         aria-hidden="true"
       />
-      <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
-        <p className="mt-2 text-sm text-slate-500">{message}</p>
+      <div className="relative w-full max-w-md animate-scale-in rounded-2xl bg-white p-6 shadow-pop">
+        <h3 className="text-sm font-semibold tracking-tight text-slate-900">{title}</h3>
+        <p className="mt-2 text-sm leading-relaxed text-slate-500">{message}</p>
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={onCancel} disabled={busy}>
             Cancel

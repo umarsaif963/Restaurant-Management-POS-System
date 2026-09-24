@@ -675,7 +675,15 @@ export interface CustomerUpdatedPayload {
 export const STOCK_UNITS = ['KG', 'GRAM', 'LITER', 'ML', 'PIECE', 'PACK'] as const;
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
-export const INVENTORY_TRANSACTION_TYPES = ['PURCHASE', 'SALE', 'ADJUSTMENT', 'WASTAGE', 'RETURN'] as const;
+export const INVENTORY_TRANSACTION_TYPES = [
+  'PURCHASE',
+  'SALE',
+  'ADJUSTMENT',
+  'WASTAGE',
+  'DAMAGE',
+  'RETURN',
+  'ORDER_CANCEL',
+] as const;
 export type InventoryTransactionType = (typeof INVENTORY_TRANSACTION_TYPES)[number];
 
 /** Derived stock health, computed client + server side from quantity vs min. */
@@ -764,8 +772,8 @@ export interface UpdateInventoryItemInput {
 /**
  * A stock movement against an inventory item. `quantity` is the number of
  * units moved (always positive); the type decides the direction added to the
- * balance (PURCHASE/RETURN increase, SALE/WASTAGE decrease, ADJUSTMENT is an
- * explicit signed set of the new balance instead).
+ * balance (PURCHASE/RETURN/ORDER_CANCEL increase, SALE/WASTAGE/DAMAGE
+ * decrease, ADJUSTMENT is an explicit signed set of the new balance instead).
  */
 export interface RecordInventoryTransactionInput {
   type: InventoryTransactionType;

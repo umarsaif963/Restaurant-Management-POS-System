@@ -30,15 +30,25 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} aria-hidden="true" />
-      <div className={`relative w-full ${maxWidthClass} rounded-xl bg-white shadow-xl`}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="absolute inset-0 animate-fade-in bg-slate-900/40 backdrop-blur-[2px]"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        className={`relative w-full ${maxWidthClass} animate-scale-in rounded-2xl bg-white shadow-pop`}
+      >
         <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+          <h3 className="text-sm font-semibold tracking-tight text-slate-900">{title}</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
             aria-label="Close dialog"
           >
             <X className="h-4 w-4" />
@@ -46,7 +56,7 @@ export function Modal({
         </header>
         <div className="max-h-[70vh] overflow-y-auto px-5 py-4">{children}</div>
         {footer && (
-          <footer className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
+          <footer className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/60 px-5 py-4">
             {footer}
           </footer>
         )}

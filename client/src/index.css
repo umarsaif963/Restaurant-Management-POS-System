@@ -10,52 +10,97 @@
   body {
     @apply bg-slate-100 text-slate-900;
   }
+
+  ::selection {
+    @apply bg-brand-200 text-brand-900;
+  }
+
+  /* Slim, unobtrusive scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225 / 0.9) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: rgb(203 213 225 / 0.9);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(148 163 184);
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
 @layer components {
   .input {
-    @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25 focus:ring-offset-0;
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500;
+    @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 hover:shadow hover:shadow-brand-600/20 active:translate-y-px focus:ring-brand-500;
   }
 
   .btn-secondary {
-    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-400;
+    @apply btn border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 active:translate-y-px focus:ring-slate-300;
   }
 
   .btn-ghost {
-    @apply btn text-slate-600 hover:bg-slate-100 focus:ring-slate-400;
+    @apply btn text-slate-600 hover:bg-slate-100 active:translate-y-px focus:ring-slate-300;
   }
 
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    @apply btn bg-red-600 text-white shadow-sm hover:bg-red-700 hover:shadow hover:shadow-red-600/20 active:translate-y-px focus:ring-red-500;
   }
 
   .chip {
-    @apply inline-flex items-center rounded-full border border-slate-300 bg-white px-3 py-1 text-sm text-slate-600 transition hover:bg-slate-50;
+    @apply inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600 shadow-sm transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700;
   }
 
   .chip-active {
-    @apply border-brand-600 bg-brand-50 text-brand-700;
+    @apply border-transparent bg-brand-600 text-white shadow-sm hover:border-transparent hover:bg-brand-700 hover:text-white;
   }
 
   .checkbox {
-    @apply h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500;
+    @apply h-4 w-4 rounded border-slate-300 text-brand-600 shadow-sm focus:ring-brand-500 focus:ring-offset-0;
   }
 
   .pill {
-    @apply inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .pill-active {
-    @apply border-brand-600 bg-brand-600 text-white hover:bg-brand-600;
+    @apply border-brand-600 bg-brand-600 text-white shadow-sm hover:border-brand-600 hover:bg-brand-600 hover:text-white;
   }
+}
+
+@layer utilities {
+  /* Subtle shimmer for skeletons */
+  .skeleton {
+    @apply animate-shimmer rounded-md bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%];
+  }
+}
+
+/* App shell: global, non-breaking polish for the consistent table markup every
+   page uses (header band, hover rows, tighter uppercase headings). */
+.app-shell thead th {
+  @apply whitespace-nowrap bg-slate-50/70 font-semibold text-slate-500;
+}
+
+.app-shell tbody tr {
+  @apply transition-colors duration-100 hover:bg-brand-50/40;
 }
 
 @layer base {

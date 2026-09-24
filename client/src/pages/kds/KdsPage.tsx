@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { useListKitchenOrdersQuery, useUpdateKitchenOrderStatusMutation } from '@/store/api/kitchenApi';
 import { useAppSelector } from '@/store/hooks';
 import { useToast } from '@/hooks/useToast';
+import { extractApiError } from '@/services/api';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import {
   KITCHEN_NEXT,
@@ -144,6 +145,8 @@ export function KdsPage() {
   const {
     data,
     isFetching,
+    isError,
+    error,
     refetch,
   } = useListKitchenOrdersQuery({ page: 1, limit: BOARD_PAGE_SIZE }, { pollingInterval: POLL_FALLBACK_MS });
 
@@ -220,6 +223,18 @@ export function KdsPage() {
             </Card>
           ))}
         </div>
+      ) : isError ? (
+        <EmptyState
+          icon={<MonitorPlay className="h-8 w-8" />}
+          title="Could not load the kitchen board"
+          description={extractApiError(error).message}
+          action={
+            <button type="button" className="btn-secondary" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4" />
+              Try again
+            </button>
+          }
+        />
       ) : (data?.items.length ?? 0) === 0 ? (
         <EmptyState
           icon={<MonitorPlay className="h-8 w-8" />}

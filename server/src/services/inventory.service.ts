@@ -12,6 +12,7 @@ import type {
 import { InventoryTransactionType, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
+import { fromMillis, toMillis } from '../utils/units.js';
 
 const itemInclude = () =>
   ({
@@ -228,10 +229,11 @@ export async function listTransactions(
 }
 
 /**
- * Record a stock movement. PURCHASE/RETURN add stock; SALE/WASTAGE remove it;
- * ADJUSTMENT overwrites the balance to the given quantity (a stock-take). The
- * new balance is written onto the item and a ledger row captures the delta.
- * Quantity math runs in integer milli-units (3 decimals) to stay exact.
+ * Record a stock movement. PURCHASE/RETURN/ORDER_CANCEL add stock;
+ * SALE/WASTAGE/DAMAGE remove it; ADJUSTMENT overwrites the balance to the
+ * given quantity (a stock-take). The new balance is written onto the item and
+ * a ledger row captures the delta. Quantity math runs in integer milli-units
+ * (3 decimals) to stay exact.
  */
 export async function recordTransaction(
   itemId: string,
@@ -247,11 +249,13 @@ export async function recordTransaction(
   switch (input.type) {
     case InventoryTransactionType.PURCHASE:
     case InventoryTransactionType.RETURN:
+    case InventoryTransactionType.ORDER_CANCEL:
       delta = signed;
       balanceAfter = current + signed;
       break;
     case InventoryTransactionType.SALE:
     case InventoryTransactionType.WASTAGE:
+    case InventoryTransactionType.DAMAGE:
       delta = -signed;
       balanceAfter = current - signed;
       break;
@@ -294,12 +298,4 @@ export async function recordTransaction(
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
   return toTransaction(created, item.name, user?.name ?? null);
-}
-
-function toMillis(value: string | number): number {
-  return Math.round(parseFloat(String(value)) * 1000);
-}
-
-function fromMillis(value: number): string {
-  return (value / 1000).toFixed(3);
 }

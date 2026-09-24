@@ -10,6 +10,7 @@ import { InventoryTransactionType, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { toCents, fromCents } from '../utils/money.js';
+import { fromMillis, toMillis } from '../utils/units.js';
 
 type PurchaseWithRelations = Prisma.PurchaseGetPayload<{
   include: {
@@ -287,12 +288,4 @@ export async function changePurchaseStatus(
   });
 
   return toPurchase(await requirePurchase(id));
-}
-
-function toMillis(value: string | number): number {
-  return Math.round(parseFloat(String(value)) * 1000);
-}
-
-function fromMillis(value: number): string {
-  return (value / 1000).toFixed(3);
 }

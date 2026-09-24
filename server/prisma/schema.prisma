@@ -111,7 +111,9 @@ enum InventoryTransactionType {
   SALE
   ADJUSTMENT
   WASTAGE
+  DAMAGE
   RETURN
+  ORDER_CANCEL
 }
 
 enum PurchaseStatus {

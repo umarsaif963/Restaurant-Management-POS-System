@@ -17,7 +17,9 @@ export const INVENTORY_TRANSACTION_TYPE_LABELS: Record<
   SALE: 'Sale',
   ADJUSTMENT: 'Adjustment',
   WASTAGE: 'Wastage',
+  DAMAGE: 'Damage',
   RETURN: 'Return',
+  ORDER_CANCEL: 'Order reversal',
 };
 
 export const INVENTORY_TRANSACTION_TYPE_BADGE: Record<
@@ -28,7 +30,9 @@ export const INVENTORY_TRANSACTION_TYPE_BADGE: Record<
   SALE: 'blue',
   ADJUSTMENT: 'amber',
   WASTAGE: 'red',
+  DAMAGE: 'red',
   RETURN: 'slate',
+  ORDER_CANCEL: 'slate',
 };
 
 export const STOCK_HEALTH_LABELS: Record<'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK', string> = {

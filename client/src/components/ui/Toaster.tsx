@@ -3,10 +3,25 @@ import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { dismissToast, type ToastType } from '@/store/slices/toastSlice';
 
-const STYLES: Record<ToastType, { container: string; icon: typeof Info }> = {
-  success: { container: 'border-emerald-200 bg-white text-emerald-800', icon: CheckCircle2 },
-  error: { container: 'border-red-200 bg-white text-red-800', icon: AlertCircle },
-  info: { container: 'border-sky-200 bg-white text-sky-800', icon: Info },
+const STYLES: Record<ToastType, { container: string; accent: string; icon: typeof Info; iconClass: string }> = {
+  success: {
+    container: 'bg-white text-slate-900',
+    accent: 'border-l-emerald-500',
+    icon: CheckCircle2,
+    iconClass: 'text-emerald-500',
+  },
+  error: {
+    container: 'bg-white text-slate-900',
+    accent: 'border-l-red-500',
+    icon: AlertCircle,
+    iconClass: 'text-red-500',
+  },
+  info: {
+    container: 'bg-white text-slate-900',
+    accent: 'border-l-sky-500',
+    icon: Info,
+    iconClass: 'text-sky-500',
+  },
 };
 
 function ToastItem({ id, type, title, message }: { id: string; type: ToastType; title: string; message?: string }) {
@@ -23,9 +38,9 @@ function ToastItem({ id, type, title, message }: { id: string; type: ToastType; 
   return (
     <div
       role="status"
-      className={`pointer-events-auto flex w-80 items-start gap-3 rounded-lg border p-3 shadow-lg ${STYLES[type].container}`}
+      className={`pointer-events-auto flex w-80 animate-slide-in-right items-start gap-3 rounded-xl border border-slate-100 border-l-4 p-3.5 shadow-pop ${STYLES[type].container} ${STYLES[type].accent}`}
     >
-      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${STYLES[type].iconClass}`} />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{title}</p>
         {message && <p className="mt-0.5 text-sm text-slate-500">{message}</p>}
