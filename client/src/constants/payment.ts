@@ -1,4 +1,4 @@
-import { PaymentMethod } from '@restaurant/shared';
+import type { PaymentMethod } from '@restaurant/shared';
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   CASH: 'Cash',
