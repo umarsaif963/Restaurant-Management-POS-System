@@ -5,7 +5,7 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–13 complete — project setup/architecture, the full
+**Status:** Modules 1–14 complete — project setup/architecture, the full
 PostgreSQL database (schema, migration, seed), Authentication, Authorization
 &amp; user/role management, restaurant settings, table sections/floor plan,
 customer management, the menu (categories, items, variations, add-ons),
@@ -36,7 +36,11 @@ table status (RESERVED / OCCUPIED / CLEANING) as parties move through it — and
 (live revenue, orders, table mix, inventory alerts, reservations and payment
 snapshots), a seven-day sales trend, plus date-ranged reports for sales-by-day,
 top-selling items, payment-method netting and the order mix (status/type), all
-available as manager/admin-only endpoints and two new Insights pages.
+available as manager/admin-only endpoints and two new Insights pages. The latest slice — **audit logs &amp;
+security hardening** — records every API request (method, path, status, duration, actor, IP, user agent —
+never the request body) into a management-only, searchable trail with `GET` / paginated listing, JSON-metadata
+filters (method/status/path), date ranges, and a retention purge; the API also strips framework fingerprints
+(`x-powered-by`), pins CORS methods, and reuses hardened cookies plus per-route rate limits.
 Every later module builds on the Prisma schema.
 
 ---
@@ -304,6 +308,8 @@ Base path: `/api/v1`
 | `GET /api/v1/analytics/top-items` | Top-selling items by revenue (qty, revenue, distinct orders); default last 30 days, limit 1–50 and sorted revenue-desc (MANAGER/ADMIN) |
 | `GET /api/v1/analytics/payment-methods` | Net received amounts per method over a date range (non-refund minus refund) + total; default last 30 days (MANAGER/ADMIN) |
 | `GET /api/v1/analytics/orders` | Order mix over a date range — counts by status and by type with revenue; default last 30 days (MANAGER/ADMIN) |
+| `GET /api/v1/audit-logs` | Paginated request trail — search (action/entity/actor), JSON-metadata filters (method/status), date range, sort (MANAGER/ADMIN) |
+| `DELETE /api/v1/audit-logs` | Retention purge with `{ olderThanDays: 1–365 }`; trims entries older than the cutoff and returns the count deleted (MANAGER/ADMIN) |
 
 > In development, `forgot-password` prints the reset link to the **server
 > console** instead of sending email (SMTP is optional).
@@ -388,6 +394,11 @@ docker compose -f docker-compose.prod.yml up --build
 - **Kitchen ticket mutations restricted to KITCHEN_STAFF / MANAGER / ADMIN**
 - **Socket.IO handshakes authenticated (access JWT + live server-side session);
   unauthenticated sockets are disconnected**
+- **(Module 14) Full request audit trail — every `/api/v1` request is recorded
+  (method, path, status, duration, actor, IP, user-agent) with a
+  management-only, searchable/filterable listing and retention purge; request
+  bodies are never persisted. Framework fingerprint suppressed (`x-powered-by`
+  off) and CORS methods pinned.**
 
 ---
 
@@ -406,7 +417,7 @@ docker compose -f docker-compose.prod.yml up --build
 11. ✅ **Suppliers + purchases** — supplier CRUD, purchase orders (PENDING → RECEIVED/CANCELLED) with generated PO numbers; receiving restocks inventory with PURCHASE ledger entries and adopts weighted-average unit costs onto items
 12. ✅ **Reservations** — bookings with customer linking or walk-ins, optional table holds (two-hour windows with overlap and capacity guards), and a PENDING → CONFIRMED → SEATED → COMPLETED (+ CANCELLED) workflow driving table status
 13. ✅ **Dashboard + reports + analytics** — manager/admin operation dashboard and date-ranged analytics endpoints (sales-by-day, top-items, payment-method netting, order mix) served to two new Insights pages, with the POS seed extended to six demo orders
-14. Audit logs + security hardening
+14. ✅ **Audit logs + security hardening** — every API request is recorded (method, path, status, duration, actor, IP, user agent; never the request body) into a management-only, paginated trail with JSON-metadata filters and a retention purge; framework fingerprint disabled, CORS methods pinned, cookies/rate limits kept tightened
 15. Testing + documentation + production prep
 
 ---

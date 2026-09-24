@@ -16,6 +16,7 @@ import purchaseRoutes from './purchase.routes.js';
 import reservationRoutes from './reservation.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
 import analyticsRoutes from './analytics.routes.js';
+import auditRoutes from './audit.routes.js';
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use('/purchases', purchaseRoutes);
 router.use('/reservations', reservationRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/analytics', analyticsRoutes);
+router.use('/audit-logs', auditRoutes);
 
 export default router;

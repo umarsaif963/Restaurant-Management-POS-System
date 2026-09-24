@@ -1065,3 +1065,56 @@ export interface AnalyticsRangeQuery {
 export interface TopItemsQuery extends AnalyticsRangeQuery {
   limit?: number;
 }
+
+// Module 14 — Audit logs & security
+// ===========================================================================
+
+/**
+ * Audit entry describing a request that reached the API. HTTP-captured rows
+ * carry `entity: 'HTTP'` and effort to the request in `metadata`; seeded rows
+ * use semantic action/entity pairs (e.g. `order.create` / `order`).
+ */
+export interface AuditLogProfile {
+  id: string;
+  userId: string | null;
+  userName: string | null;
+  userEmail: string | null;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  /** HTTP verb, when the row came from request capture. */
+  method: string;
+  /** Request path, when the row came from request capture. */
+  path: string;
+  /** Response status code, when captured. */
+  status: number | null;
+  /** Handler duration in milliseconds, when captured. */
+  durationMs: number | null;
+  userAgent: string | null;
+  ip: string | null;
+  createdAt: string;
+}
+
+export interface ListAuditLogsQuery {
+  page?: number;
+  limit?: number;
+  /** Free text across action, entity, and actor name/email. */
+  search?: string;
+  entity?: string;
+  method?: string;
+  status?: number;
+  /** Inclusive lower bound (ISO datetime) on `createdAt`. */
+  from?: string;
+  /** Inclusive upper bound (ISO datetime) on `createdAt`. */
+  to?: string;
+  sort?: 'asc' | 'desc';
+}
+
+export interface PurgeAuditLogsInput {
+  /** Delete entries older than this many days (1–365). */
+  olderThanDays: number;
+}
+
+export interface PurgeAuditLogsResult {
+  deleted: number;
+}

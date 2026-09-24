@@ -927,6 +927,55 @@ async function main(): Promise<void> {
     }
   }
 
+  // ---- Seed audit trail (Module 14) ----------------------------------------
+  const managerUser = await prisma.user.findFirst({
+    where: { email: 'manager@restaurant.com' },
+    select: { id: true },
+  });
+  const seedAudit: {
+    action: string;
+    entity: string;
+    entityId?: string;
+    userId?: string | null;
+    method: string;
+    path: string;
+    offsetHours: number;
+    status: number;
+  }[] = [
+    { action: 'auth.login', entity: 'auth', userId: adminUser?.id, method: 'POST', path: '/api/v1/auth/login', offsetHours: -14 * 24, status: 200 },
+    { action: 'user.create', entity: 'user', userId: adminUser?.id, method: 'POST', path: '/api/v1/users', offsetHours: -13 * 24, status: 201 },
+    { action: 'menu.create', entity: 'menu', userId: adminUser?.id, method: 'POST', path: '/api/v1/menu-items', offsetHours: -12 * 24, status: 201 },
+    { action: 'auth.login', entity: 'auth', userId: managerUser?.id, method: 'POST', path: '/api/v1/auth/login', offsetHours: -3 * 24, status: 200 },
+    { action: 'order.create', entity: 'order', entityId: 'ORD000001', userId: managerUser?.id, method: 'POST', path: '/api/v1/orders', offsetHours: -5 * 24, status: 201 },
+    { action: 'order.complete', entity: 'order', entityId: 'ORD000001', userId: managerUser?.id, method: 'POST', path: '/api/v1/orders/ORD000001/status', offsetHours: -5 * 24 + 1, status: 200 },
+    { action: 'order.create', entity: 'order', entityId: 'ORD000002', userId: managerUser?.id, method: 'POST', path: '/api/v1/orders', offsetHours: -3 * 24, status: 201 },
+    { action: 'payment.create', entity: 'payment', entityId: 'ORD000002', userId: managerUser?.id, method: 'POST', path: '/api/v1/orders/ORD000002/payments', offsetHours: -3 * 24 + 2, status: 201 },
+    { action: 'inventory.update', entity: 'inventory', userId: adminUser?.id, method: 'PATCH', path: '/api/v1/inventory', offsetHours: -2 * 24, status: 200 },
+    { action: 'purchase.receive', entity: 'purchase', userId: adminUser?.id, method: 'POST', path: '/api/v1/purchases', offsetHours: -24, status: 200 },
+    { action: 'settings.update', entity: 'settings', userId: adminUser?.id, method: 'PATCH', path: '/api/v1/settings', offsetHours: -12, status: 200 },
+    { action: 'auth.logout', entity: 'auth', userId: managerUser?.id, method: 'POST', path: '/api/v1/auth/logout', offsetHours: -1, status: 200 },
+  ];
+  const seedAuditStart = Date.now();
+  for (const entry of seedAudit) {
+    await prisma.auditLog.create({
+      data: {
+        userId: entry.userId ?? null,
+        action: entry.action,
+        entity: entry.entity,
+        entityId: entry.entityId ?? null,
+        ip: '127.0.0.1',
+        metadata: {
+          method: entry.method,
+          path: entry.path,
+          status: entry.status,
+          durationMs: 12,
+          userAgent: 'seed-script',
+        },
+        createdAt: new Date(seedAuditStart + entry.offsetHours * 3_600_000),
+      },
+    });
+  }
+
   // Re-assert floor-plan statuses (direct order creation skips service side-effects).
   const finalTableStatuses = new Map<number, 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING'>(
     Array.from({ length: 10 }, (_, index) => [index + 1, STATUS_BY_TABLE[index + 1] ?? 'AVAILABLE']),
@@ -958,6 +1007,7 @@ async function main(): Promise<void> {
     prisma.order.count(),
     prisma.orderItem.count(),
     prisma.payment.count(),
+    prisma.auditLog.count(),
   ]);
 
   // eslint-disable-next-line no-console
@@ -972,6 +1022,8 @@ async function main(): Promise<void> {
   console.log(`  recipes: ${counts[9]}, recipe ingredients: ${counts[10]}, suppliers: ${counts[11]}, reservations: ${counts[12]}`);
   // eslint-disable-next-line no-console
   console.log(`  orders: ${counts[13]}, order items: ${counts[14]}, payments: ${counts[15]}`);
+  // eslint-disable-next-line no-console
+  console.log(`  audit logs: ${counts[16]}`);
 }
 
 main()

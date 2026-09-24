@@ -16,6 +16,7 @@ import { PurchasesPage } from '@/pages/PurchasesPage';
 import { ReservationsPage } from '@/pages/ReservationsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { ReportsPage } from '@/pages/ReportsPage';
+import { AuditLogsPage } from '@/pages/AuditLogsPage';
 import { POSPage } from '@/pages/POSPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { KitchenOrdersPage } from '@/pages/kitchen/KitchenOrdersPage';
@@ -141,6 +142,14 @@ export const router = createBrowserRouter([
         element: (
           <RoleGuard roles={['ADMIN', 'MANAGER']}>
             <ReportsPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: 'audit-logs',
+        element: (
+          <RoleGuard roles={['ADMIN', 'MANAGER']}>
+            <AuditLogsPage />
           </RoleGuard>
         ),
       },
