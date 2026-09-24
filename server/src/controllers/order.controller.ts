@@ -61,6 +61,6 @@ export const removeItem = asyncHandler(async (req: Request, res: Response) => {
 export const updateStatus = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.validatedParams as { id: string };
   const body = req.validatedBody as UpdateOrderStatusInput;
-  const order = await orderService.updateStatus(id, body);
+  const order = await orderService.updateStatus(id, body, currentUserId(req));
   res.status(200).json({ success: true, data: { order } });
 });

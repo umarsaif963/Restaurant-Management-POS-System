@@ -165,6 +165,7 @@ type TransactionRow = {
   balanceAfter: { toString(): string } | null;
   unitCost: { toString(): string } | null;
   note: string | null;
+  referenceIds: string | null;
   userId: string | null;
   createdAt: Date;
 };
@@ -179,6 +180,7 @@ function toTransaction(row: TransactionRow, itemName: string, userName: string |
     balanceAfter: row.balanceAfter?.toString() ?? null,
     unitCost: row.unitCost?.toString() ?? null,
     note: row.note,
+    referenceIds: row.referenceIds,
     userName,
     createdAt: row.createdAt.toISOString(),
   };

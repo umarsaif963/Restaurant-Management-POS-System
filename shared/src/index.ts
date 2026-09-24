@@ -715,6 +715,7 @@ export interface InventoryTransactionProfile {
   balanceAfter: string | null;
   unitCost: string | null;
   note: string | null;
+  referenceIds: string | null;
   userName: string | null;
   createdAt: string;
 }

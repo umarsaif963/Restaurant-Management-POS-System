@@ -15,6 +15,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { fromCents, percentOf, toCents } from '../utils/money.js';
 import { derivePaymentStatus } from '../utils/billing.js';
 import { realtime } from '../sockets/realtime.js';
+import { consumeIngredients } from './inventory-consumption.service.js';
 
 const ALLOW_ITEM_EDITS: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CONFIRMED];
 
@@ -526,6 +527,7 @@ export async function removeItem(orderId: string, itemId: string): Promise<Order
 export async function updateStatus(
   id: string,
   input: UpdateOrderStatusInput,
+  userId: string,
 ): Promise<OrderProfile> {
   const order = await prisma.order.findUnique({ where: { id }, include: { items: true } });
   if (!order) throw ApiError.notFound('Order not found');
@@ -575,6 +577,26 @@ export async function updateStatus(
           },
         });
         ticketCreated = true;
+      }
+
+      // Consuming stock the moment production starts (module 3). Runs inside
+      // the same transaction as the status change, so an out-of-stock error
+      // rolls the order back to PENDING without a ticket or ledger rows. The
+      // order-row update above serializes concurrent confirms; the SALE check
+      // keeps a second confirm from deducting twice.
+      const alreadyConsumed = await tx.inventoryTransaction.count({
+        where: { referenceIds: id, type: 'SALE' },
+      });
+      if (alreadyConsumed === 0) {
+        await consumeIngredients(tx, {
+          orderId: id,
+          userId,
+          lines: order.items.map((item) => ({
+            menuItemId: item.menuItemId,
+            quantity: item.quantity,
+          })),
+          note: `Consumed by ${order.orderNumber}`,
+        });
       }
     }
 
