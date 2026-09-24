@@ -16,7 +16,7 @@
     "dev": "npm run build:shared && concurrently -n server,client -c blue,green \"npm run dev -w @restaurant/server\" \"npm run dev -w @restaurant/client\"",
     "dev:server": "npm run build:shared && npm run dev -w @restaurant/server",
     "dev:client": "npm run build:shared && npm run dev -w @restaurant/client",
-    "build": "npm run build:shared && npm run build -w @restaurant/server && npm run build -w @restaurant/client",
+    "build": "npm run build:shared && npm run build -w @restaurant/client",
     "start": "npm run start -w @restaurant/server",
     "typecheck": "npm run build:shared && npm run typecheck -w @restaurant/shared && npm run typecheck -w @restaurant/server && npm run typecheck -w @restaurant/client",
     "lint": "npm run lint -w @restaurant/shared && npm run lint -w @restaurant/server && npm run lint -w @restaurant/client",
