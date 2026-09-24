@@ -14,6 +14,8 @@ import recipeRoutes from './recipe.routes.js';
 import supplierRoutes from './supplier.routes.js';
 import purchaseRoutes from './purchase.routes.js';
 import reservationRoutes from './reservation.routes.js';
+import dashboardRoutes from './dashboard.routes.js';
+import analyticsRoutes from './analytics.routes.js';
 
 const router = Router();
 
@@ -32,5 +34,7 @@ router.use('/recipes', recipeRoutes);
 router.use('/suppliers', supplierRoutes);
 router.use('/purchases', purchaseRoutes);
 router.use('/reservations', reservationRoutes);
+router.use('/dashboard', dashboardRoutes);
+router.use('/analytics', analyticsRoutes);
 
 export default router;

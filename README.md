@@ -5,7 +5,7 @@ TypeScript monorepo. This project is developed **one module at a time** — each
 module delivers a fully working vertical slice (database + API + validation +
 frontend) and is reviewed before the next one starts.
 
-**Status:** Modules 1–12 complete — project setup/architecture, the full
+**Status:** Modules 1–13 complete — project setup/architecture, the full
 PostgreSQL database (schema, migration, seed), Authentication, Authorization
 &amp; user/role management, restaurant settings, table sections/floor plan,
 customer management, the menu (categories, items, variations, add-ons),
@@ -31,7 +31,12 @@ ledger entries, and adopt weighted-average unit costs onto items — and
 **reservations** — bookings with linked customers/walk-ins, optional table
 holds (two-hour windows with overlap and capacity guards), and a
 PENDING → CONFIRMED → SEATED → COMPLETED (+ CANCELLED) workflow that drives
-table status (RESERVED / OCCUPIED / CLEANING) as parties move through it.
+table status (RESERVED / OCCUPIED / CLEANING) as parties move through it — and
+**dashboards, reports &amp; analytics** — a manager/admin operation dashboard
+(live revenue, orders, table mix, inventory alerts, reservations and payment
+snapshots), a seven-day sales trend, plus date-ranged reports for sales-by-day,
+top-selling items, payment-method netting and the order mix (status/type), all
+available as manager/admin-only endpoints and two new Insights pages.
 Every later module builds on the Prisma schema.
 
 ---
@@ -294,6 +299,11 @@ Base path: `/api/v1`
 | `PATCH /api/v1/reservations/:id` | Edit a PENDING/CONFIRMED booking (name/phone/customer/table/party/date/notes); re-validates the table hold (ADMIN/MANAGER/CASHIER/WAITER; terminal statuses → 409) |
 | `POST /api/v1/reservations/:id/status` | Drive PENDING → CONFIRMED → SEATED → COMPLETED (+ CANCELLED); seating takes the table (OCCUPIED), completion sends it to CLEANING when free, cancel releases a still-RESERVED table (ADMIN/MANAGER/CASHIER/WAITER) |
 | `DELETE /api/v1/reservations/:id` | Delete a PENDING/CANCELLED booking and release its held table (MANAGER/ADMIN; SEATED/COMPLETED → 409) |
+| `GET /api/v1/dashboard/summary` | Live operation overview — today revenue/orders/AOV/open, table mix, inventory health, reservations today/upcoming, payments net today (MANAGER/ADMIN) |
+| `GET /api/v1/analytics/sales` | Sales-by-day over a date range, UTC day buckets with zero-filled gaps; defaults to the last 7 days (MANAGER/ADMIN) |
+| `GET /api/v1/analytics/top-items` | Top-selling items by revenue (qty, revenue, distinct orders); default last 30 days, limit 1–50 and sorted revenue-desc (MANAGER/ADMIN) |
+| `GET /api/v1/analytics/payment-methods` | Net received amounts per method over a date range (non-refund minus refund) + total; default last 30 days (MANAGER/ADMIN) |
+| `GET /api/v1/analytics/orders` | Order mix over a date range — counts by status and by type with revenue; default last 30 days (MANAGER/ADMIN) |
 
 > In development, `forgot-password` prints the reset link to the **server
 > console** instead of sending email (SMTP is optional).
@@ -395,7 +405,7 @@ docker compose -f docker-compose.prod.yml up --build
 10. ✅ **Inventory, recipes & ingredients** — inventory item CRUD with stock health, a movement ledger (PURCHASE/SALE/WASTAGE/RETURN/ADJUSTMENT) with exact decimal math and negative-balance guards, recipe ingredient bills with derived dish costs, and seeded recipes
 11. ✅ **Suppliers + purchases** — supplier CRUD, purchase orders (PENDING → RECEIVED/CANCELLED) with generated PO numbers; receiving restocks inventory with PURCHASE ledger entries and adopts weighted-average unit costs onto items
 12. ✅ **Reservations** — bookings with customer linking or walk-ins, optional table holds (two-hour windows with overlap and capacity guards), and a PENDING → CONFIRMED → SEATED → COMPLETED (+ CANCELLED) workflow driving table status
-13. Dashboard + reports + analytics
+13. ✅ **Dashboard + reports + analytics** — manager/admin operation dashboard and date-ranged analytics endpoints (sales-by-day, top-items, payment-method netting, order mix) served to two new Insights pages, with the POS seed extended to six demo orders
 14. Audit logs + security hardening
 15. Testing + documentation + production prep
 

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PrismaClient, UserRole, StockUnit } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { fromCents, percentOf, toCents } from '../src/utils/money.js';
 
 const prisma = new PrismaClient();
 const BCRYPT_ROUNDS = 12;
@@ -431,6 +432,132 @@ const RESERVATIONS: SeedReservation[] = [
   },
 ];
 
+interface SeedOrderLine {
+  sku: string;
+  quantity: number;
+}
+
+interface SeedOrderPayment {
+  method: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'OTHER';
+  amount: string;
+  /** Offset in milliseconds from the order's createdAt. */
+  atOffsetMs: number;
+}
+
+interface SeedOrder {
+  orderNumber: string;
+  orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
+  status: 'COMPLETED' | 'PENDING';
+  /** createdAt = now + offsetMs (negative shifts into the past). */
+  atOffsetMs: number;
+  /** completedAt = createdAt + completedOffsetMs (COMPLETED orders only). */
+  completedOffsetMs: number;
+  tableNumber?: number;
+  items: SeedOrderLine[];
+  payments?: SeedOrderPayment[];
+  notes?: string;
+}
+
+/**
+ * Demo orders so Module 13 (dashboard & analytics) has history to report on.
+ * Payments are explicit amounts that must sum to each order's grand total;
+ * line/order totals are recomputed from the seeded menu/S settings below.
+ */
+const SEED_ORDERS: SeedOrder[] = [
+  {
+    orderNumber: 'ORD000001',
+    orderType: 'DINE_IN',
+    status: 'COMPLETED',
+    atOffsetMs: -5 * 24 * 60 * 60 * 1000,
+    completedOffsetMs: 60 * 60 * 1000,
+    tableNumber: 2,
+    items: [
+      { sku: 'BUR-001', quantity: 2 },
+      { sku: 'PIZ-001', quantity: 1 },
+      { sku: 'DRK-002', quantity: 2 },
+      { sku: 'DRK-001', quantity: 1 },
+    ],
+    payments: [{ method: 'CASH', amount: '46.68', atOffsetMs: 55 * 60 * 1000 }],
+    notes: 'Lunch rush — table 2, regulars.',
+  },
+  {
+    orderNumber: 'ORD000002',
+    orderType: 'TAKEAWAY',
+    status: 'COMPLETED',
+    atOffsetMs: -3 * 24 * 60 * 60 * 1000,
+    completedOffsetMs: 20 * 60 * 1000,
+    items: [
+      { sku: 'PIZ-002', quantity: 1 },
+      { sku: 'PIZ-003', quantity: 1 },
+      { sku: 'DRK-001', quantity: 2 },
+    ],
+    payments: [{ method: 'CARD', amount: '36.90', atOffsetMs: 18 * 60 * 1000 }],
+    notes: 'Takeaway order collected.',
+  },
+  {
+    orderNumber: 'ORD000003',
+    orderType: 'DELIVERY',
+    status: 'COMPLETED',
+    atOffsetMs: -2 * 24 * 60 * 60 * 1000,
+    completedOffsetMs: 15 * 60 * 1000,
+    items: [
+      { sku: 'RIC-001', quantity: 2 },
+      { sku: 'BUR-002', quantity: 1 },
+      { sku: 'BBQ-002', quantity: 1 },
+      { sku: 'DRK-003', quantity: 2 },
+    ],
+    payments: [{ method: 'BANK_TRANSFER', amount: '43.40', atOffsetMs: 12 * 60 * 1000 }],
+    notes: 'Delivery to downtown office block.',
+  },
+  {
+    orderNumber: 'ORD000004',
+    orderType: 'DINE_IN',
+    status: 'COMPLETED',
+    atOffsetMs: -1 * 24 * 60 * 60 * 1000,
+    completedOffsetMs: 25 * 60 * 1000,
+    tableNumber: 5,
+    items: [
+      { sku: 'BUR-003', quantity: 2 },
+      { sku: 'DES-001', quantity: 2 },
+      { sku: 'DRK-001', quantity: 2 },
+      { sku: 'DRK-004', quantity: 1 },
+    ],
+    payments: [
+      { method: 'CARD', amount: '20.00', atOffsetMs: 20 * 60 * 1000 },
+      { method: 'CASH', amount: '26.45', atOffsetMs: 22 * 60 * 1000 },
+    ],
+    notes: 'Split payment — card then cash.',
+  },
+  {
+    orderNumber: 'ORD000005',
+    orderType: 'DINE_IN',
+    status: 'COMPLETED',
+    atOffsetMs: -35 * 60 * 1000,
+    completedOffsetMs: 20 * 60 * 1000,
+    tableNumber: 6,
+    items: [
+      { sku: 'BUR-004', quantity: 1 },
+      { sku: 'PIZ-001', quantity: 1 },
+      { sku: 'DRK-004', quantity: 1 },
+    ],
+    payments: [{ method: 'CARD', amount: '25.68', atOffsetMs: 18 * 60 * 1000 }],
+    notes: 'Early lunch, seated by the window.',
+  },
+  {
+    orderNumber: 'ORD000006',
+    orderType: 'DINE_IN',
+    status: 'PENDING',
+    atOffsetMs: 0,
+    completedOffsetMs: 0,
+    tableNumber: 4,
+    items: [
+      { sku: 'BUR-002', quantity: 3 },
+      { sku: 'DRK-001', quantity: 3 },
+    ],
+    notes: 'Open order — still dining.',
+  },
+];
+
 const RECIPES: SeedRecipe[] = [
   {
     menuItemName: 'Classic Cheeseburger',
@@ -724,6 +851,96 @@ async function main(): Promise<void> {
     });
   }
 
+  // ---- Demo orders for the dashboard & analytics (Module 13) ----------------
+  const settings = await prisma.restaurantSettings.findFirst();
+  if (!settings) throw new Error('Settings missing — cannot seed demo orders');
+  const orderUser = adminUser ?? (await prisma.user.findFirst({ where: { email: 'admin@restaurant.com' }, select: { id: true } }));
+  if (!orderUser) throw new Error('Admin user missing — cannot seed demo orders');
+
+  const demoSkus = [...new Set(SEED_ORDERS.flatMap((order) => order.items.map((line) => line.sku)))];
+  const demoMenuItems = await prisma.menuItem.findMany({ where: { sku: { in: demoSkus } }, select: { id: true, sku: true, name: true, price: true, taxRate: true } });
+  const menuBySku = new Map(demoMenuItems.map((item) => [item.sku, item]));
+
+  for (const order of SEED_ORDERS) {
+    const createdAt = new Date(Date.now() + order.atOffsetMs);
+    let subtotalCents = 0;
+    let taxCents = 0;
+    const lines = order.items.map((line) => {
+      const menu = menuBySku.get(line.sku);
+      if (!menu) throw new Error(`Unknown SKU in demo order ${order.orderNumber}: ${line.sku}`);
+      const unitPriceCents = toCents(menu.price);
+      const lineTotalCents = unitPriceCents * line.quantity;
+      subtotalCents += lineTotalCents;
+      const lineTaxCents = percentOf(lineTotalCents, menu.taxRate);
+      taxCents += lineTaxCents;
+      return {
+        menuItemId: menu.id,
+        name: menu.name,
+        quantity: line.quantity,
+        unitPrice: fromCents(unitPriceCents),
+        lineTotal: fromCents(lineTotalCents),
+        taxAmount: fromCents(lineTaxCents),
+        discountAmount: '0',
+      };
+    });
+
+    const serviceChargeCents = order.orderType === 'DINE_IN' ? percentOf(subtotalCents, settings.serviceChargePct) : 0;
+    const grandTotalCents = subtotalCents + taxCents + serviceChargeCents;
+    const paymentTotalCents = (order.payments ?? []).reduce((sum, payment) => sum + toCents(payment.amount), 0);
+    if (order.status === 'COMPLETED' && paymentTotalCents !== grandTotalCents) {
+      throw new Error(`Demo order ${order.orderNumber} payments (${paymentTotalCents}) do not match grand total (${grandTotalCents})`);
+    }
+
+    const record = await prisma.order.create({
+      data: {
+        orderNumber: order.orderNumber,
+        orderType: order.orderType,
+        status: order.status,
+        paymentStatus: order.payments ? 'PAID' : 'UNPAID',
+        userId: orderUser.id,
+        tableId: order.tableNumber != null ? (tableIdByNumber.get(order.tableNumber) ?? null) : null,
+        subtotal: fromCents(subtotalCents),
+        itemDiscountTotal: '0',
+        discountAmount: '0',
+        taxAmount: fromCents(taxCents),
+        serviceChargeAmount: fromCents(serviceChargeCents),
+        grandTotal: fromCents(grandTotalCents),
+        totalPaid: fromCents(paymentTotalCents),
+        balanceDue: fromCents(grandTotalCents - paymentTotalCents),
+        notes: order.notes ?? null,
+        completedAt: order.status === 'COMPLETED' ? new Date(createdAt.getTime() + order.completedOffsetMs) : null,
+        createdAt,
+        items: { create: lines },
+      },
+    });
+
+    for (const payment of order.payments ?? []) {
+      await prisma.payment.create({
+        data: {
+          orderId: record.id,
+          amount: payment.amount,
+          method: payment.method,
+          receivedById: orderUser.id,
+          paidAt: new Date(createdAt.getTime() + payment.atOffsetMs),
+        },
+      });
+    }
+  }
+
+  // Re-assert floor-plan statuses (direct order creation skips service side-effects).
+  const finalTableStatuses = new Map<number, 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING'>(
+    Array.from({ length: 10 }, (_, index) => [index + 1, STATUS_BY_TABLE[index + 1] ?? 'AVAILABLE']),
+  );
+  finalTableStatuses.set(4, 'OCCUPIED');
+  finalTableStatuses.set(2, 'CLEANING');
+  finalTableStatuses.set(5, 'CLEANING');
+  finalTableStatuses.set(6, 'CLEANING');
+  await Promise.all(
+    [...finalTableStatuses].map(([tableNumber, status]) =>
+      prisma.restaurantTable.updateMany({ where: { tableNumber }, data: { status } }),
+    ),
+  );
+
   const counts = await prisma.$transaction([
     prisma.user.count(),
     prisma.menuCategory.count(),
@@ -738,6 +955,9 @@ async function main(): Promise<void> {
     prisma.recipeIngredient.count(),
     prisma.supplier.count(),
     prisma.reservation.count(),
+    prisma.order.count(),
+    prisma.orderItem.count(),
+    prisma.payment.count(),
   ]);
 
   // eslint-disable-next-line no-console
@@ -750,6 +970,8 @@ async function main(): Promise<void> {
   console.log(`  tables: ${counts[5]}, sections: ${counts[6]}, inventory items: ${counts[7]}, customers: ${counts[8]}`);
   // eslint-disable-next-line no-console
   console.log(`  recipes: ${counts[9]}, recipe ingredients: ${counts[10]}, suppliers: ${counts[11]}, reservations: ${counts[12]}`);
+  // eslint-disable-next-line no-console
+  console.log(`  orders: ${counts[13]}, order items: ${counts[14]}, payments: ${counts[15]}`);
 }
 
 main()

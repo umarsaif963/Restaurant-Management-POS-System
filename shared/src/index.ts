@@ -963,3 +963,105 @@ export interface ListReservationsQuery {
   /** Inclusive upper bound (ISO datetime) for the reservation date. */
   to?: string;
 }
+
+// Module 13 — Dashboard & analytics
+// ===========================================================================
+
+/** Money amounts are decimal strings with 2 places. Day buckets are UTC. */
+export interface DashboardSummary {
+  today: {
+    /** Revenue recognized on orders completed today. */
+    revenue: string;
+    /** Orders created today (any non-cancelled status). */
+    orders: number;
+    /** Orders completed today. */
+    completedOrders: number;
+    averageOrderValue: string;
+    /** Orders created today still open (not COMPLETED/CANCELLED). */
+    openOrders: number;
+  };
+  tables: {
+    total: number;
+    available: number;
+    reserved: number;
+    occupied: number;
+    cleaning: number;
+  };
+  inventory: {
+    lowStock: number;
+    outOfStock: number;
+  };
+  reservations: {
+    /** Active (PENDING/CONFIRMED/SEATED) bookings for today. */
+    today: number;
+    /** Active bookings dated later than today. */
+    upcoming: number;
+  };
+  paymentsToday: {
+    /** Non-refund minus refund totals recorded today. */
+    netReceived: string;
+    count: number;
+  };
+}
+
+export interface SalesByDayItem {
+  date: string;
+  orders: number;
+  revenue: string;
+  averageOrderValue: string;
+}
+
+export interface SalesReport {
+  from: string;
+  to: string;
+  items: SalesByDayItem[];
+}
+
+export interface TopSellingItem {
+  menuItemId: string;
+  name: string;
+  quantity: number;
+  revenue: string;
+  orders: number;
+}
+
+export interface TopSellingReport {
+  items: TopSellingItem[];
+}
+
+export interface PaymentMethodBreakdownItem {
+  method: PaymentMethod;
+  amount: string;
+  count: number;
+}
+
+export interface PaymentMethodReport {
+  total: string;
+  items: PaymentMethodBreakdownItem[];
+}
+
+export interface OrderStatusCount {
+  status: OrderStatus;
+  count: number;
+}
+
+export interface OrderTypeCount {
+  type: OrderType;
+  count: number;
+  revenue: string;
+}
+
+export interface OrderAnalyticsReport {
+  statuses: OrderStatusCount[];
+  types: OrderTypeCount[];
+}
+
+/** Inclusive ISO-datetime range; when omitted the service applies defaults. */
+export interface AnalyticsRangeQuery {
+  from?: string;
+  to?: string;
+}
+
+export interface TopItemsQuery extends AnalyticsRangeQuery {
+  limit?: number;
+}

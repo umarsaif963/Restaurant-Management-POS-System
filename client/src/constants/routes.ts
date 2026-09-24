@@ -1,10 +1,12 @@
 import {
   Activity,
+  BarChart3,
   BookOpenText,
   Boxes,
   CalendarDays,
   ChefHat,
   ClipboardList,
+  LayoutDashboard,
   LayoutGrid,
   MonitorPlay,
   ReceiptText,
@@ -124,6 +126,22 @@ export const NAV_SECTIONS: NavSection[] = [
         to: '/customers',
         icon: Users,
         roles: ['ADMIN', 'MANAGER', 'CASHIER', 'WAITER'],
+      },
+    ],
+  },
+  {
+    title: 'Insights',
+    roles: ['ADMIN', 'MANAGER'],
+    items: [
+      {
+        label: 'Dashboard',
+        to: '/dashboard',
+        icon: LayoutDashboard,
+      },
+      {
+        label: 'Reports',
+        to: '/reports',
+        icon: BarChart3,
       },
     ],
   },

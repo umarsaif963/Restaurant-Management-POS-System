@@ -14,6 +14,8 @@ import { RecipesPage } from '@/pages/RecipesPage';
 import { SuppliersPage } from '@/pages/SuppliersPage';
 import { PurchasesPage } from '@/pages/PurchasesPage';
 import { ReservationsPage } from '@/pages/ReservationsPage';
+import { DashboardPage } from '@/pages/DashboardPage';
+import { ReportsPage } from '@/pages/ReportsPage';
 import { POSPage } from '@/pages/POSPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { KitchenOrdersPage } from '@/pages/kitchen/KitchenOrdersPage';
@@ -125,6 +127,22 @@ export const router = createBrowserRouter([
       {
         path: 'reservations',
         element: <ReservationsPage />,
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <RoleGuard roles={['ADMIN', 'MANAGER']}>
+            <DashboardPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <RoleGuard roles={['ADMIN', 'MANAGER']}>
+            <ReportsPage />
+          </RoleGuard>
+        ),
       },
       {
         path: 'customers',

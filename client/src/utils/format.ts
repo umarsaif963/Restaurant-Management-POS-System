@@ -21,3 +21,10 @@ export function formatDateTime(iso: string): string {
     second: '2-digit',
   });
 }
+
+/** Formats a decimal-money string (or number) with the store's default symbol. */
+export function formatMoney(value: string | number): string {
+  const amount = Number(value);
+  const sign = amount < 0 ? '-' : '';
+  return `${sign}$${Math.abs(amount).toFixed(2)}`;
+}
