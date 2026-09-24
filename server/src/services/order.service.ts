@@ -15,7 +15,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { fromCents, percentOf, toCents } from '../utils/money.js';
 import { derivePaymentStatus } from '../utils/billing.js';
 import { realtime } from '../sockets/realtime.js';
-import { consumeIngredients } from './inventory-consumption.service.js';
+import { consumeIngredients, reverseConsumption, reverseIngredients } from './inventory-consumption.service.js';
 
 const ALLOW_ITEM_EDITS: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CONFIRMED];
 
@@ -37,6 +37,18 @@ const orderInclude = (): Prisma.OrderInclude => ({
 });
 
 type OrderWithRelations = Prisma.OrderGetPayload<{ include: ReturnType<typeof orderInclude> }>;
+
+/**
+ * Serializes item mutations against the order-confirm/cancel transaction.
+ * Confirmation locks the order row through its own UPDATE; add/remove items
+ * must take the same lock before deciding how to adjust stock, so a line never
+ * slips through between a pending confirm and a confirmed cancel.
+ */
+async function lockOrderStatus(tx: Prisma.TransactionClient, orderId: string): Promise<OrderStatus | null> {
+  await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${orderId} FOR UPDATE`;
+  const row = await tx.order.findUnique({ where: { id: orderId }, select: { status: true } });
+  return row?.status ?? null;
+}
 
 interface AddOnSnapshot {
   name: string;
@@ -428,7 +440,11 @@ async function recalcTotals(orderId: string) {
   });
 }
 
-export async function addItems(id: string, input: AddOrderItemsInput): Promise<OrderProfile> {
+export async function addItems(
+  id: string,
+  input: AddOrderItemsInput,
+  userId: string,
+): Promise<OrderProfile> {
   const order = await prisma.order.findUnique({ where: { id } });
   if (!order) throw ApiError.notFound('Order not found');
   if (!ALLOW_ITEM_EDITS.includes(order.status)) {
@@ -436,7 +452,15 @@ export async function addItems(id: string, input: AddOrderItemsInput): Promise<O
   }
   const lines = await resolveLines(input.items);
   let kitchenTicketId: string | undefined;
+  let effectiveStatus: OrderStatus = order.status;
+  let stockTouched = false;
   await prisma.$transaction(async (tx) => {
+    const lock = await lockOrderStatus(tx, id);
+    if (!lock) throw ApiError.notFound('Order not found');
+    effectiveStatus = lock;
+    if (!ALLOW_ITEM_EDITS.includes(lock)) {
+      throw ApiError.conflict('Items can only be added while the order is PENDING or CONFIRMED.');
+    }
     const orderItems: { id: string }[] = [];
     for (const line of lines) {
       const createdItem = await tx.orderItem.create({
@@ -458,7 +482,7 @@ export async function addItems(id: string, input: AddOrderItemsInput): Promise<O
     }
     // Items added to a confirmed order reach the kitchen: append to the open
     // ticket if one exists, otherwise mint a fresh ticket (module 7).
-    if (order.status === 'CONFIRMED') {
+    if (effectiveStatus === 'CONFIRMED') {
       const openTicket = await tx.kitchenOrder.findFirst({
         where: { orderId: id, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
         orderBy: { createdAt: 'asc' },
@@ -497,16 +521,30 @@ export async function addItems(id: string, input: AddOrderItemsInput): Promise<O
         });
         kitchenTicketId = ticket.id;
       }
+      // New items on a confirmed order also consume their ingredients (module 4).
+      stockTouched = await consumeIngredients(tx, {
+        orderId: id,
+        userId,
+        lines: lines.map((line) => ({ menuItemId: line.menuItemId, quantity: line.quantity })),
+        note: `Consumed by ${order.orderNumber}`,
+      });
     }
   });
   realtime.orderUpdated({ orderId: id });
-  if (order.status === 'CONFIRMED' && kitchenTicketId) {
+  if (effectiveStatus === 'CONFIRMED' && kitchenTicketId) {
     realtime.kitchenUpdated({ kitchenOrderId: kitchenTicketId, orderId: id });
+  }
+  if (stockTouched) {
+    realtime.inventoryUpdated({ orderId: id });
   }
   return toOrder(await recalcTotals(id));
 }
 
-export async function removeItem(orderId: string, itemId: string): Promise<OrderProfile> {
+export async function removeItem(
+  orderId: string,
+  itemId: string,
+  userId: string,
+): Promise<OrderProfile> {
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) throw ApiError.notFound('Order not found');
   if (!ALLOW_ITEM_EDITS.includes(order.status)) {
@@ -514,10 +552,33 @@ export async function removeItem(orderId: string, itemId: string): Promise<Order
   }
   const item = await prisma.orderItem.findFirst({ where: { id: itemId, orderId } });
   if (!item) throw ApiError.notFound('Order item not found');
-  await prisma.orderItem.delete({ where: { id: itemId } });
+  let effectiveStatus: OrderStatus = order.status;
+  let stockTouched = false;
+  await prisma.$transaction(async (tx) => {
+    const lock = await lockOrderStatus(tx, orderId);
+    if (!lock) throw ApiError.notFound('Order not found');
+    effectiveStatus = lock;
+    if (!ALLOW_ITEM_EDITS.includes(lock)) {
+      throw ApiError.conflict('Items can only be removed while the order is PENDING or CONFIRMED.');
+    }
+    await tx.orderItem.delete({ where: { id: itemId } });
+    // Removing a line from a confirmed order releases the stock it consumed
+    // (module 4). The ORDER_CANCEL rows keep the ledger's netting exact.
+    if (effectiveStatus === 'CONFIRMED') {
+      stockTouched = await reverseIngredients(tx, {
+        orderId,
+        userId,
+        lines: [{ menuItemId: item.menuItemId, quantity: item.quantity }],
+        note: `Removed from ${order.orderNumber}`,
+      });
+    }
+  });
   realtime.orderUpdated({ orderId });
-  if (order.status === 'CONFIRMED') {
+  if (effectiveStatus === 'CONFIRMED') {
     realtime.kitchenUpdated({ orderId });
+  }
+  if (stockTouched) {
+    realtime.inventoryUpdated({ orderId });
   }
   return toOrder(await recalcTotals(orderId));
 }
@@ -544,6 +605,7 @@ export async function updateStatus(
   }
 
   let ticketCreated = false;
+  let stockTouched = false;
   const updated = await prisma.$transaction(async (tx) => {
     const now = new Date();
     const next = await tx.order.update({
@@ -588,7 +650,7 @@ export async function updateStatus(
         where: { referenceIds: id, type: 'SALE' },
       });
       if (alreadyConsumed === 0) {
-        await consumeIngredients(tx, {
+        stockTouched = await consumeIngredients(tx, {
           orderId: id,
           userId,
           lines: order.items.map((item) => ({
@@ -631,6 +693,17 @@ export async function updateStatus(
       }
     }
 
+    // Cancelling an order releases any stock it still consumes (module 4).
+    // PENDING orders never consumed anything, so this is a no-op for them; the
+    // ledger netting is idempotent even under a concurrent double-cancel.
+    if (input.status === 'CANCELLED') {
+      stockTouched = await reverseConsumption(tx, {
+        orderId: id,
+        userId,
+        note: `Reversal for cancelled ${order.orderNumber}`,
+      });
+    }
+
     return next;
   });
 
@@ -638,6 +711,9 @@ export async function updateStatus(
     realtime.kitchenCreated({ orderId: id });
   }
   realtime.orderUpdated({ orderId: id });
+  if (stockTouched) {
+    realtime.inventoryUpdated({ orderId: id });
+  }
   if (input.status === 'COMPLETED' || input.status === 'CANCELLED') {
     realtime.tableUpdated(updated.tableId ? { tableId: updated.tableId } : {});
     realtime.customerUpdated(updated.customerId ? { customerId: updated.customerId } : {});

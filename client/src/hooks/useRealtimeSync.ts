@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import {
   SOCKET_EVENTS,
+  type InventoryUpdatedPayload,
   type KitchenCreatedPayload,
   type KitchenUpdatedPayload,
   type OrderUpdatedPayload,
@@ -50,12 +51,18 @@ export function useRealtimeSync() {
     const onCustomerUpdated = () => {
       dispatch(apiSlice.util.invalidateTags(['Customers']));
     };
+    // Order-level stock movements (consume/reverse) refresh the inventory
+    // views and the analytics low-stock widget without polling (module 4).
+    const onInventoryUpdated = (_payload: InventoryUpdatedPayload) => {
+      dispatch(apiSlice.util.invalidateTags(['InventoryItems', 'InventoryTransactions']));
+    };
 
     socket.on(SOCKET_EVENTS.orderUpdated, onOrderUpdated);
     socket.on(SOCKET_EVENTS.kitchenCreated, onKitchenCreated);
     socket.on(SOCKET_EVENTS.kitchenUpdated, onKitchenUpdated);
     socket.on(SOCKET_EVENTS.tableUpdated, onTableUpdated);
     socket.on(SOCKET_EVENTS.customerUpdated, onCustomerUpdated);
+    socket.on(SOCKET_EVENTS.inventoryUpdated, onInventoryUpdated);
 
     return () => {
       socket.off(SOCKET_EVENTS.orderUpdated, onOrderUpdated);
@@ -63,6 +70,7 @@ export function useRealtimeSync() {
       socket.off(SOCKET_EVENTS.kitchenUpdated, onKitchenUpdated);
       socket.off(SOCKET_EVENTS.tableUpdated, onTableUpdated);
       socket.off(SOCKET_EVENTS.customerUpdated, onCustomerUpdated);
+      socket.off(SOCKET_EVENTS.inventoryUpdated, onInventoryUpdated);
     };
   }, [dispatch]);
 

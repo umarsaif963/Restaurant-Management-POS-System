@@ -80,10 +80,16 @@ apiClient.interceptors.response.use(
 
 export function extractApiError(error: unknown): { message: string; status?: number } {
   if (axios.isAxiosError<ApiResponse<never>>(error)) {
-    return {
-      message: error.response?.data?.message ?? error.message,
-      status: error.response?.status,
-    };
+    const data = error.response?.data;
+    let message = data?.message ?? error.message;
+    const errors = data?.errors;
+    if (errors && errors.length > 0) {
+      const details = errors.map((entry) => entry.message).filter(Boolean);
+      if (details.length > 0) {
+        message = `${message} ${details.join(' ')}`.trim();
+      }
+    }
+    return { message, status: error.response?.status };
   }
   return { message: error instanceof Error ? error.message : 'Unexpected error' };
 }

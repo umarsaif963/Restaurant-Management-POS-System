@@ -3,6 +3,7 @@ import type { Server } from 'socket.io';
 import {
   SOCKET_EVENTS,
   type CustomerUpdatedPayload,
+  type InventoryUpdatedPayload,
   type KitchenCreatedPayload,
   type KitchenUpdatedPayload,
   type OrderUpdatedPayload,
@@ -45,5 +46,8 @@ export const realtime = {
   },
   customerUpdated(payload: CustomerUpdatedPayload = {}): void {
     publish(SOCKET_EVENTS.customerUpdated, payload);
+  },
+  inventoryUpdated(payload: InventoryUpdatedPayload = {}): void {
+    publish(SOCKET_EVENTS.inventoryUpdated, payload);
   },
 };

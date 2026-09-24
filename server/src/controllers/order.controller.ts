@@ -48,13 +48,13 @@ export const updateOrder = asyncHandler(async (req: Request, res: Response) => {
 export const addItems = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.validatedParams as { id: string };
   const body = req.validatedBody as AddOrderItemsInput;
-  const order = await orderService.addItems(id, body);
+  const order = await orderService.addItems(id, body, currentUserId(req));
   res.status(200).json({ success: true, data: { order } });
 });
 
 export const removeItem = asyncHandler(async (req: Request, res: Response) => {
   const { id, itemId } = req.validatedParams as { id: string; itemId: string };
-  const order = await orderService.removeItem(id, itemId);
+  const order = await orderService.removeItem(id, itemId, currentUserId(req));
   res.status(200).json({ success: true, data: { order } });
 });
 

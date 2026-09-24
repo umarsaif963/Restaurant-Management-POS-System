@@ -643,6 +643,7 @@ export const SOCKET_EVENTS = {
   kitchenUpdated: 'kitchen:updated',
   tableUpdated: 'table:updated',
   customerUpdated: 'customer:updated',
+  inventoryUpdated: 'inventory:updated',
 } as const;
 
 export type SocketEventName = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];
@@ -666,6 +667,15 @@ export interface TableUpdatedPayload {
 
 export interface CustomerUpdatedPayload {
   customerId?: string;
+}
+
+/**
+ * Fired after an order-level stock movement (consumption or reversal).
+ * Clients invalidate the whole inventory cache because a single event can
+ * touch several line items at once.
+ */
+export interface InventoryUpdatedPayload {
+  orderId?: string;
 }
 
 // ---------------------------------------------------------------------------

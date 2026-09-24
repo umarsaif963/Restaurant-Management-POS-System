@@ -16,6 +16,7 @@ import { useListCategoriesQuery, useListItemsQuery } from '@/store/api/menuApi';
 import { useAppSelector } from '@/store/hooks';
 import { useToast } from '@/hooks/useToast';
 import { useDebounce } from '@/hooks/useDebounce';
+import { extractApiError } from '@/services/api';
 import { PAYMENT_METHOD_ORDER, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_BADGE } from '@/constants/payment';
 import {
   ORDER_STATUS_BADGE,
@@ -109,7 +110,7 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
       setSearch('');
       setCategoryId('');
     } catch (error) {
-      toast.error('Could not add item', error instanceof Error ? error.message : 'The order may no longer be editable.');
+      toast.error('Could not add item', extractApiError(error).message);
     }
   }
 
@@ -119,7 +120,7 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
       const updated = await removeItem({ id: order.id, itemId }).unwrap();
       toast.success('Item removed', `${updated.orderNumber} was re-totaled.`);
     } catch (error) {
-      toast.error('Could not remove item', error instanceof Error ? error.message : 'The order may no longer be editable.');
+      toast.error('Could not remove item', extractApiError(error).message);
     }
   }
 
@@ -141,7 +142,7 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
       setCancelArmed(false);
       setCancelReason('');
     } catch (error) {
-      toast.error('Could not update status', error instanceof Error ? error.message : 'The transition was rejected.');
+      toast.error('Could not update status', extractApiError(error).message);
     }
   }
 
@@ -161,7 +162,7 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
       setNotes('');
       setShowPaymentHistory(true);
     } catch (error) {
-      toast.error('Could not record payment', error instanceof Error ? error.message : 'The payment was rejected.');
+      toast.error('Could not record payment', extractApiError(error).message);
     } finally {
       setSubmittingPayment(false);
     }
@@ -178,7 +179,7 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
       setRefundAmount('');
       setRefundNotes('');
     } catch (error) {
-      toast.error('Could not process refund', error instanceof Error ? error.message : 'The refund was rejected.');
+      toast.error('Could not process refund', extractApiError(error).message);
     } finally {
       setSubmittingRefund(false);
     }

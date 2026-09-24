@@ -78,14 +78,15 @@ function stockError(shortages: InsufficientStockEntry[]): ApiError {
  * Deduct the ingredients for a set of order lines and record SALE ledger rows.
  * Must run inside the caller's Prisma transaction so the order status, kitchen
  * ticket and stock ledger commit or roll back together. Aborts with a 409 if
- * any ingredient is short — nothing is partially applied.
+ * any ingredient is short — nothing is partially applied. Returns whether any
+ * stock actually moved (no lines, or recipe-less items, return false).
  */
 export async function consumeIngredients(
   tx: Prisma.TransactionClient,
   params: { orderId: string; userId: string; lines: ConsumptionLine[]; note?: string },
-): Promise<void> {
+): Promise<boolean> {
   const requirements = await computeRequirements(tx, params.lines);
-  if (requirements.length === 0) return;
+  if (requirements.length === 0) return false;
 
   const items = await tx.inventoryItem.findMany({
     where: { id: { in: requirements.map((r) => r.inventoryItemId) } },
@@ -149,4 +150,89 @@ export async function consumeIngredients(
       },
     });
   }
+  return true;
+}
+
+/**
+ * Restore stock for ledgered entries (single ledger chapter). Entry amounts
+ * are positive milli-unit quantities that get added back and recorded as
+ * ORDER_CANCEL rows — the mirror image of the SALE consumption.
+ */
+async function restockRows(
+  tx: Prisma.TransactionClient,
+  entries: { inventoryItemId: string; millis: number }[],
+  params: { orderId: string; userId: string; note?: string },
+): Promise<void> {
+  for (const entry of entries) {
+    const updated = await tx.inventoryItem.update({
+      where: { id: entry.inventoryItemId },
+      data: { quantity: { increment: fromMillis(entry.millis) } },
+    });
+    await tx.inventoryTransaction.create({
+      data: {
+        inventoryItemId: entry.inventoryItemId,
+        type: InventoryTransactionType.ORDER_CANCEL,
+        quantity: fromMillis(entry.millis),
+        balanceAfter: updated.quantity.toString(),
+        referenceIds: params.orderId,
+        userId: params.userId,
+        note: params.note ?? null,
+      },
+    });
+  }
+}
+
+/**
+ * Return whatever the order is still net-consuming when it is cancelled. The
+ * ledger is additive: SALE rows record what was taken (signed negative),
+ * ORDER_CANCEL rows record what was already given back (signed positive), so
+ * `remaining = Σ −quantity` per ingredient. Only positive remainders move.
+ * This also makes the call idempotent — a fully reversed order nets to zero
+ * and touches nothing.
+ */
+export async function reverseConsumption(
+  tx: Prisma.TransactionClient,
+  params: { orderId: string; userId: string; note?: string },
+): Promise<boolean> {
+  const rows = await tx.inventoryTransaction.findMany({
+    where: {
+      referenceIds: params.orderId,
+      type: { in: [InventoryTransactionType.SALE, InventoryTransactionType.ORDER_CANCEL] },
+    },
+    select: { inventoryItemId: true, type: true, quantity: true },
+  });
+  if (rows.length === 0) return false;
+
+  const net = new Map<string, number>();
+  for (const row of rows) {
+    const delta = -toMillis(row.quantity.toString());
+    net.set(row.inventoryItemId, (net.get(row.inventoryItemId) ?? 0) + delta);
+  }
+  const toReturn = [...net.entries()]
+    .filter(([, millis]) => millis > 0)
+    .map(([inventoryItemId, millis]) => ({ inventoryItemId, millis }));
+  await restockRows(tx, toReturn, params);
+  return toReturn.length > 0;
+}
+
+/**
+ * Return stock for a specific set of order lines (e.g. an item removed from a
+ * confirmed order). Reverses the exact recipe requirement of those lines and
+ * records ORDER_CANCEL rows so later netting stays correct.
+ */
+export async function reverseIngredients(
+  tx: Prisma.TransactionClient,
+  params: { orderId: string; userId: string; lines: ConsumptionLine[]; note?: string },
+): Promise<boolean> {
+  const requirements = await computeRequirements(tx, params.lines);
+  if (requirements.length === 0) return false;
+  await restockRows(
+    tx,
+    requirements.map((requirement) => ({
+      inventoryItemId: requirement.inventoryItemId,
+      millis: requirement.requiredMillis,
+    })),
+    params,
+  );
+  return true;
 }
