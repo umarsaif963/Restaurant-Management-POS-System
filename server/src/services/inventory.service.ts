@@ -6,11 +6,14 @@ import type {
   ListInventoryTransactionsQuery,
   Paginated,
   RecordInventoryTransactionInput,
+  ReorderSuggestions,
+  ReorderSuggestionsQuery,
+  ReorderSuggestionItem,
   StockHealth,
   UpdateInventoryItemInput,
 } from '@restaurant/shared';
 import { InventoryTransactionType, Prisma } from '@prisma/client';
-import { prisma } from '../config/prisma.js';
+import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { fromMillis, toMillis } from '../utils/units.js';
 
@@ -368,8 +371,88 @@ export async function recordTransaction(
       data: { quantity: fromMillis(balanceAfter), ...(costChanged ? { costPrice: unitCost } : {}) },
     });
     return row;
-  });
+  }, TRANSACTION_OPTIONS);
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
   return toTransaction(created, item.name, user?.name ?? null, null);
+}
+
+// ---- Reorder suggestions ----------------------------------------
+
+const DAY_MS = 86_400_000;
+
+/** Formats to the given decimals, trimming trailing zeros. */
+function fmt(value: number, decimals: number): string {
+  return value.toFixed(decimals).replace(/\.?0+$/, '');
+}
+
+/**
+ * Flags low/out-of-stock items and computes suggested purchase quantities from
+ * their recent net consumption (SALE minus ORDER_CANCEL ledger rows) over the
+ * lookback window, projected `leadDays` ahead plus the item's minimum buffer.
+ */
+export async function getReorderSuggestions(params: ReorderSuggestionsQuery): Promise<ReorderSuggestions> {
+  const windowDays = params.windowDays ?? 14;
+  const leadDays = params.leadDays ?? 7;
+  const from = new Date(Date.now() - windowDays * DAY_MS);
+
+  const rows = await prisma.inventoryItem.findMany({
+    where: { isActive: true },
+    include: itemInclude(),
+  });
+  const items = rows.map(toItem);
+  const flagged = items.filter((item) => item.health !== 'IN_STOCK');
+  if (flagged.length === 0) {
+    return { generatedAt: new Date().toISOString(), windowDays, leadDays, items: [] };
+  }
+
+  const groups = await prisma.inventoryTransaction.groupBy({
+    by: ['inventoryItemId', 'type'],
+    where: {
+      type: { in: [InventoryTransactionType.SALE, InventoryTransactionType.ORDER_CANCEL] },
+      inventoryItemId: { in: flagged.map((item) => item.id) },
+      createdAt: { gte: from },
+    },
+    _sum: { quantity: true },
+  });
+
+  const saleMillis = new Map<string, number>();
+  const returnMillis = new Map<string, number>();
+  for (const group of groups) {
+    const millis = Math.round(Number(group._sum.quantity ?? 0) * 1000);
+    if (group.type === InventoryTransactionType.SALE) {
+      saleMillis.set(group.inventoryItemId, (saleMillis.get(group.inventoryItemId) ?? 0) + millis);
+    } else {
+      returnMillis.set(group.inventoryItemId, (returnMillis.get(group.inventoryItemId) ?? 0) + millis);
+    }
+  }
+
+  const suggested: ReorderSuggestionItem[] = flagged.map((item) => {
+    // SALE rows are stored negative, ORDER_CANCEL rows positive.
+    const netMillis = -((saleMillis.get(item.id) ?? 0) + (returnMillis.get(item.id) ?? 0));
+    const onHandMillis = toMillis(item.quantity);
+    const dailyMillis = netMillis / windowDays;
+    const needMillis = dailyMillis * leadDays + toMillis(item.minQuantity);
+    const suggestedQuantity = Math.max(0, needMillis - onHandMillis);
+    const daysOfStock =
+      onHandMillis <= 0 ? '0' : dailyMillis > 0 ? fmt(onHandMillis / dailyMillis, 1) : null;
+
+    return {
+      item,
+      consumptionPerDay: fmt(dailyMillis / 1000, 3),
+      daysOfStock,
+      projectedNeed: fmt(needMillis / 1000, 3),
+      suggestedQuantity: fmt(suggestedQuantity / 1000, 3),
+    };
+  });
+
+  const severity: Record<StockHealth, number> = { OUT_OF_STOCK: 0, LOW_STOCK: 1, IN_STOCK: 2 };
+  suggested.sort(
+    (a, b) =>
+      severity[a.item.health] - severity[b.item.health] ||
+      Number(b.suggestedQuantity) - Number(a.suggestedQuantity) ||
+      a.item.name.localeCompare(b.item.name),
+  );
+
+  return { generatedAt: new Date().toISOString(), windowDays, leadDays, items: suggested };
 }

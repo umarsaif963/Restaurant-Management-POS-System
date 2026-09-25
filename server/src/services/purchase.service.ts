@@ -7,7 +7,7 @@ import type {
   UpdatePurchaseInput,
 } from '@restaurant/shared';
 import { InventoryTransactionType, Prisma } from '@prisma/client';
-import { prisma } from '../config/prisma.js';
+import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { toCents, fromCents } from '../utils/money.js';
 import { fromMillis, toMillis } from '../utils/units.js';
@@ -191,7 +191,7 @@ export async function updatePurchase(
       include: purchaseInclude(),
     });
     return toPurchase(updated);
-  });
+  }, TRANSACTION_OPTIONS);
 }
 
 export async function deletePurchase(id: string): Promise<void> {
@@ -285,7 +285,7 @@ export async function changePurchaseStatus(
       where: { id },
       data: { status: 'RECEIVED', receivedAt: new Date() },
     });
-  });
+  }, TRANSACTION_OPTIONS);
 
   return toPurchase(await requirePurchase(id));
 }

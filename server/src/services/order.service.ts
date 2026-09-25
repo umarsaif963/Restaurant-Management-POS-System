@@ -10,7 +10,7 @@ import type {
   UpdateOrderStatusInput,
 } from '@restaurant/shared';
 import { OrderStatus, Prisma, type Order } from '@prisma/client';
-import { prisma } from '../config/prisma.js';
+import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { fromCents, percentOf, toCents } from '../utils/money.js';
 import { derivePaymentStatus } from '../utils/billing.js';
@@ -327,7 +327,7 @@ export async function createOrder(
           });
         }
         return created;
-      });
+      }, TRANSACTION_OPTIONS);
       realtime.orderUpdated({ orderId: order.id });
       if (order.tableId) {
         realtime.tableUpdated({ tableId: order.tableId });
@@ -529,7 +529,7 @@ export async function addItems(
         note: `Consumed by ${order.orderNumber}`,
       });
     }
-  });
+  }, TRANSACTION_OPTIONS);
   realtime.orderUpdated({ orderId: id });
   if (effectiveStatus === 'CONFIRMED' && kitchenTicketId) {
     realtime.kitchenUpdated({ kitchenOrderId: kitchenTicketId, orderId: id });
@@ -572,7 +572,7 @@ export async function removeItem(
         note: `Removed from ${order.orderNumber}`,
       });
     }
-  });
+  }, TRANSACTION_OPTIONS);
   realtime.orderUpdated({ orderId });
   if (effectiveStatus === 'CONFIRMED') {
     realtime.kitchenUpdated({ orderId });
@@ -640,12 +640,18 @@ export async function updateStatus(
         });
         ticketCreated = true;
       }
+    }
 
-      // Consuming stock the moment production starts (module 3). Runs inside
-      // the same transaction as the status change, so an out-of-stock error
-      // rolls the order back to PENDING without a ticket or ledger rows. The
-      // order-row update above serializes concurrent confirms; the SALE check
-      // keeps a second confirm from deducting twice.
+    // Consuming stock the moment production starts (module 3). Runs inside
+    // the same transaction as the status change, so an out-of-stock error
+    // rolls the order back to PENDING without a ticket or ledger rows. The
+    // order-row update above serializes concurrent confirms; the SALE check
+    // keeps a second confirm from deducting twice.
+    //
+    // This must also cover PENDING -> COMPLETED, which is a legal transition
+    // for orders that never enter the kitchen flow. Gating this on CONFIRMED
+    // alone let those orders complete with no stock deducted and no ledger.
+    if (input.status === 'CONFIRMED' || input.status === 'COMPLETED') {
       const alreadyConsumed = await tx.inventoryTransaction.count({
         where: { referenceIds: id, type: 'SALE' },
       });
@@ -705,7 +711,7 @@ export async function updateStatus(
     }
 
     return next;
-  });
+  }, TRANSACTION_OPTIONS);
 
   if (input.status === 'CONFIRMED' && ticketCreated) {
     realtime.kitchenCreated({ orderId: id });

@@ -8,7 +8,7 @@ import type {
   UpdateReservationInput,
 } from '@restaurant/shared';
 import { Prisma } from '@prisma/client';
-import { prisma } from '../config/prisma.js';
+import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { RESERVATION_WINDOW_HOURS } from '../validators/reservation.schema.js';
 
@@ -210,7 +210,7 @@ export async function createReservation(
       include: reservationInclude(),
     });
     return toReservation(created);
-  });
+  }, TRANSACTION_OPTIONS);
 }
 
 export async function updateReservation(
@@ -262,7 +262,7 @@ export async function updateReservation(
       include: reservationInclude(),
     });
     return toReservation(updated);
-  });
+  }, TRANSACTION_OPTIONS);
 }
 
 export async function deleteReservation(id: string): Promise<void> {
@@ -273,7 +273,7 @@ export async function deleteReservation(id: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     await releaseTableIfReserved(tx, existing.tableId, id);
     await tx.reservation.delete({ where: { id } });
-  });
+  }, TRANSACTION_OPTIONS);
 }
 
 const ALLOWED_NEXT: Record<ReservationStatus, ReservationStatus[]> = {
@@ -314,7 +314,7 @@ export async function changeReservationStatus(
         include: reservationInclude(),
       });
       return toReservation(updated);
-    });
+    }, TRANSACTION_OPTIONS);
   }
 
   if (target === 'CONFIRMED') {
@@ -342,7 +342,7 @@ export async function changeReservationStatus(
         include: reservationInclude(),
       });
       return toReservation(updated);
-    });
+    }, TRANSACTION_OPTIONS);
   }
 
   // COMPLETED
@@ -370,5 +370,5 @@ export async function changeReservationStatus(
       include: reservationInclude(),
     });
     return toReservation(updated);
-  });
+  }, TRANSACTION_OPTIONS);
 }

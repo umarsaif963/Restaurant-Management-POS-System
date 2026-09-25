@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Boxes, History, Pencil, Plus, RotateCw, Search, Trash2 } from 'lucide-react';
-import type { InventoryItemProfile, ListInventoryItemsQuery, StockHealth, UserRole } from '@restaurant/shared';
+import type { InventoryItemProfile, InventoryTransactionType, ListInventoryItemsQuery, StockHealth, UserRole } from '@restaurant/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -12,6 +12,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ItemFormModal } from '@/components/inventory/ItemFormModal';
 import { TransactionModal } from '@/components/inventory/TransactionModal';
 import { TransactionsModal } from '@/components/inventory/TransactionsModal';
+import { ReorderSuggestionsCard } from '@/components/inventory/ReorderSuggestionsCard';
 import {
   useDeleteInventoryItemMutation,
   useListInventoryItemQuery,
@@ -36,6 +37,9 @@ export function InventoryPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItemProfile | null>(null);
   const [recordingOn, setRecordingOn] = useState<InventoryItemProfile | null>(null);
+  const [recordingPreset, setRecordingPreset] = useState<{ type: InventoryTransactionType; quantity: string } | null>(
+    null
+  );
   const [viewingHistory, setViewingHistory] = useState<InventoryItemProfile | null>(null);
   const [toDelete, setToDelete] = useState<InventoryItemProfile | null>(null);
 
@@ -105,6 +109,17 @@ export function InventoryPage() {
             </select>
           </div>
         </Card>
+
+        <ReorderSuggestionsCard
+          canManage={canManage}
+          onRestock={(item, suggestedQuantity) => {
+            setRecordingOn(item);
+            setRecordingPreset({ type: 'PURCHASE', quantity: suggestedQuantity });
+          }}
+          onRetry={() => {
+            void refetch();
+          }}
+        />
 
         <Card>
           {isError ? (
@@ -235,7 +250,16 @@ export function InventoryPage() {
       </section>
 
       <ItemFormModal open={formOpen} item={editingItem} onClose={() => setFormOpen(false)} />
-      <TransactionModal open={recordingOn !== null} item={recordingOn} onClose={() => setRecordingOn(null)} />
+      <TransactionModal
+        open={recordingOn !== null}
+        item={recordingOn}
+        presetType={recordingPreset?.type}
+        presetQuantity={recordingPreset?.quantity}
+        onClose={() => {
+          setRecordingOn(null);
+          setRecordingPreset(null);
+        }}
+      />
       <TransactionsModal open={viewingHistory !== null} item={viewingHistory} onClose={() => setViewingHistory(null)} />
 
       <ConfirmDialog

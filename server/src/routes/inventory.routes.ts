@@ -9,6 +9,7 @@ import {
   listInventoryItemsQuerySchema,
   listInventoryTransactionsQuerySchema,
   recordTransactionSchema,
+  reorderSuggestionsQuerySchema,
   resourceIdParamsSchema,
   updateInventoryItemSchema,
 } from '../validators/inventory.schema.js';
@@ -22,6 +23,12 @@ router.use(authenticate());
 const managers = [UserRole.MANAGER, UserRole.ADMIN];
 
 router.get('/items', validate({ query: listInventoryItemsQuerySchema }), inventoryController.listItems);
+
+router.get(
+  '/reorder-suggestions',
+  validate({ query: reorderSuggestionsQuerySchema }),
+  inventoryController.getReorderSuggestions,
+);
 
 router.get(
   '/items/:id',

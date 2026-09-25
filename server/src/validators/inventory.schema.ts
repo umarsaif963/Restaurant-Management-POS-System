@@ -88,3 +88,8 @@ export const listInventoryTransactionsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+export const reorderSuggestionsQuerySchema = z.object({
+  windowDays: z.coerce.number().int().min(1).max(90).default(14),
+  leadDays: z.coerce.number().int().min(1).max(60).default(7),
+});

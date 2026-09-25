@@ -7,6 +7,8 @@ import type {
   ListInventoryTransactionsQuery,
   Paginated,
   RecordInventoryTransactionInput,
+  ReorderSuggestions,
+  ReorderSuggestionsQuery,
   UpdateInventoryItemInput,
 } from '@restaurant/shared';
 import { apiSlice } from './apiSlice';
@@ -52,6 +54,11 @@ export const inventoryApi = apiSlice.injectEndpoints({
       transformResponse: (response: ApiResponse<Paginated<InventoryTransactionProfile>>) => response.data!,
       providesTags: ['InventoryTransactions'],
     }),
+    getReorderSuggestions: build.query<ReorderSuggestions, ReorderSuggestionsQuery | void>({
+      query: (params) => ({ url: '/v1/inventory/reorder-suggestions', method: 'GET', params }),
+      transformResponse: (response: ApiResponse<ReorderSuggestions>) => response.data!,
+      providesTags: ['InventoryItems'],
+    }),
     recordInventoryTransaction: build.mutation<
       InventoryTransactionProfile,
       { itemId: string; data: RecordInventoryTransactionInput }
@@ -75,4 +82,5 @@ export const {
   useDeleteInventoryItemMutation,
   useListInventoryTransactionsQuery,
   useRecordInventoryTransactionMutation,
+  useGetReorderSuggestionsQuery,
 } = inventoryApi;

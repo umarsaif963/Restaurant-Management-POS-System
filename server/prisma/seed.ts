@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { PrismaClient, UserRole, StockUnit } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { fromCents, percentOf, toCents } from '../src/utils/money.js';
+import { consumeIngredients } from '../src/services/inventory-consumption.service.js';
 
 const prisma = new PrismaClient();
 const BCRYPT_ROUNDS = 12;
@@ -264,9 +265,14 @@ const CAPACITY_BY_TABLE: Record<number, number> = {
   1: 2, 2: 2, 3: 4, 4: 4, 5: 4, 6: 6, 7: 2, 8: 2, 9: 8, 10: 8,
 };
 
-/** Demo statuses so the floor plan (module 4) shows variety. */
+/**
+ * Demo statuses so the floor plan (module 4) shows variety. Only statuses that
+ * a real record backs are listed here — an OCCUPIED table with no open order
+ * reads as a stuck table on the floor plan. Table 4 is the table that actually
+ * holds the open PENDING order (ORD000006); tables 2/5/6 are the ones completed
+ * orders just left, and 9 is held by a PENDING reservation.
+ */
 const STATUS_BY_TABLE: Partial<Record<number, 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING'>> = {
-  3: 'OCCUPIED',
   7: 'CLEANING',
   9: 'RESERVED',
 };
@@ -340,22 +346,22 @@ const INVENTORY_ITEMS: SeedInventoryItem[] = [
   { name: 'Beef Patty', sku: 'ING-002', unit: StockUnit.PIECE, quantity: '120', minQuantity: '30', costPrice: '1.10', category: 'Meat' },
   { name: 'Cheese Slices', sku: 'ING-003', unit: StockUnit.PIECE, quantity: '180', minQuantity: '50', costPrice: '0.40', category: 'Dairy' },
   { name: 'Bacon Strips', sku: 'ING-004', unit: StockUnit.PIECE, quantity: '90', minQuantity: '20', costPrice: '0.55', category: 'Meat' },
-  { name: 'Potato', sku: 'ING-005', unit: StockUnit.KG, quantity: '55', minQuantity: '10', costPrice: '0.90', category: 'Produce' },
+  { name: 'Potato', sku: 'ING-005', unit: StockUnit.KG, quantity: '5', minQuantity: '10', costPrice: '0.90', category: 'Produce' },
   { name: 'Cooking Oil', sku: 'ING-006', unit: StockUnit.LITER, quantity: '32', minQuantity: '8', costPrice: '2.20', category: 'Pantry' },
   { name: 'Pizza Dough', sku: 'ING-007', unit: StockUnit.PIECE, quantity: '42', minQuantity: '10', costPrice: '1.20', category: 'Bakery' },
   { name: 'Mozzarella', sku: 'ING-008', unit: StockUnit.KG, quantity: '16', minQuantity: '5', costPrice: '6.50', category: 'Dairy' },
   { name: 'Tomato Sauce', sku: 'ING-009', unit: StockUnit.LITER, quantity: '22', minQuantity: '6', costPrice: '2.80', category: 'Pantry' },
   { name: 'Rice', sku: 'ING-010', unit: StockUnit.KG, quantity: '85', minQuantity: '20', costPrice: '1.10', category: 'Pantry' },
   { name: 'Chicken Breast', sku: 'ING-011', unit: StockUnit.KG, quantity: '42', minQuantity: '10', costPrice: '2.90', category: 'Meat' },
-  { name: 'Cola Syrup', sku: 'ING-012', unit: StockUnit.LITER, quantity: '12', minQuantity: '4', costPrice: '4.50', category: 'Beverages' },
+  { name: 'Cola Syrup', sku: 'ING-012', unit: StockUnit.LITER, quantity: '2', minQuantity: '4', costPrice: '4.50', category: 'Beverages' },
   { name: 'Oranges', sku: 'ING-013', unit: StockUnit.KG, quantity: '26', minQuantity: '8', costPrice: '1.30', category: 'Produce' },
   { name: 'Flour', sku: 'ING-014', unit: StockUnit.KG, quantity: '60', minQuantity: '15', costPrice: '0.80', category: 'Pantry' },
-  { name: 'Vanilla Ice Cream', sku: 'ING-015', unit: StockUnit.LITER, quantity: '10', minQuantity: '3', costPrice: '3.60', category: 'Frozen' },
+  { name: 'Vanilla Ice Cream', sku: 'ING-015', unit: StockUnit.LITER, quantity: '2', minQuantity: '3', costPrice: '3.60', category: 'Frozen' },
   { name: 'Cocoa Powder', sku: 'ING-016', unit: StockUnit.KG, quantity: '5', minQuantity: '2', costPrice: '8.00', category: 'Pantry' },
-  { name: 'Espresso Beans', sku: 'ING-017', unit: StockUnit.KG, quantity: '8', minQuantity: '3', costPrice: '9.50', category: 'Beverages' },
-  { name: 'Mascarpone', sku: 'ING-018', unit: StockUnit.KG, quantity: '6', minQuantity: '2', costPrice: '7.20', category: 'Dairy' },
+  { name: 'Espresso Beans', sku: 'ING-017', unit: StockUnit.KG, quantity: '1.5', minQuantity: '3', costPrice: '9.50', category: 'Beverages' },
+  { name: 'Mascarpone', sku: 'ING-018', unit: StockUnit.KG, quantity: '0', minQuantity: '2', costPrice: '7.20', category: 'Dairy' },
   { name: 'BBQ Sauce', sku: 'ING-019', unit: StockUnit.LITER, quantity: '9', minQuantity: '3', costPrice: '3.10', category: 'Pantry' },
-  { name: 'Lamb Leg', sku: 'ING-020', unit: StockUnit.KG, quantity: '18', minQuantity: '6', costPrice: '5.80', category: 'Meat' },
+  { name: 'Lamb Leg', sku: 'ING-020', unit: StockUnit.KG, quantity: '4', minQuantity: '6', costPrice: '5.80', category: 'Meat' },
   { name: 'Eggs', sku: 'ING-021', unit: StockUnit.PIECE, quantity: '120', minQuantity: '40', costPrice: '0.15', category: 'Dairy' },
 ];
 
@@ -925,6 +931,32 @@ async function main(): Promise<void> {
         },
       });
     }
+
+    // Completed demo orders consumed their recipe ingredients in production.
+    // Orders are written straight to Prisma here, so the service hook that
+    // normally does this never runs — invoke it explicitly so the seeded
+    // ledger and stock levels match what real orders would have produced.
+    // The root client is passed straight in: PrismaClient satisfies
+    // TransactionClient, and the pooler's proxy drops long-lived interactive
+    // transactions (P2028), which the seed is far too slow to avoid.
+    if (order.status === 'COMPLETED') {
+      await consumeIngredients(prisma, {
+        orderId: record.id,
+        userId: orderUser.id,
+        lines: order.items.map((line) => ({
+          menuItemId: menuBySku.get(line.sku)!.id,
+          quantity: line.quantity,
+        })),
+        note: `Consumed by ${order.orderNumber}`,
+      });
+      // consumeIngredients stamps the ledger rows with "now". Re-date them to
+      // the order's completion time so the 14-day reorder-suggestion window
+      // and the per-item consumption rates reflect the seeded history.
+      await prisma.inventoryTransaction.updateMany({
+        where: { referenceIds: record.id, type: 'SALE' },
+        data: { createdAt: new Date(createdAt.getTime() + order.completedOffsetMs) },
+      });
+    }
   }
 
   // ---- Seed audit trail (Module 14) ----------------------------------------
@@ -976,19 +1008,45 @@ async function main(): Promise<void> {
     });
   }
 
-  // Re-assert floor-plan statuses (direct order creation skips service side-effects).
-  const finalTableStatuses = new Map<number, 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING'>(
-    Array.from({ length: 10 }, (_, index) => [index + 1, STATUS_BY_TABLE[index + 1] ?? 'AVAILABLE']),
+  // Re-assert floor-plan statuses (direct order creation skips service
+  // side-effects). Occupied is derived from the orders that are actually open
+  // so a table can never be shown occupied with nothing seated on it; a table
+  // an order just left is CLEANING; RESERVED comes from a held table.
+  const openOrderTables = await prisma.order.findMany({
+    where: { status: { notIn: ['COMPLETED', 'CANCELLED'] }, tableId: { not: null } },
+    select: { tableId: true },
+  });
+  const openTableIds = new Set(openOrderTables.map((order) => order.tableId));
+
+  const completedOrderTables = await prisma.order.findMany({
+    where: { status: 'COMPLETED', tableId: { not: null } },
+    orderBy: { completedAt: 'desc' },
+    select: { tableId: true },
+  });
+  const recentlyCompletedTableIds = new Set(completedOrderTables.map((order) => order.tableId));
+
+  const reservedTableIds = new Set(
+    (
+      await prisma.reservation.findMany({
+        where: { status: { in: ['PENDING', 'CONFIRMED'] }, tableId: { not: null } },
+        select: { tableId: true },
+      })
+    ).map((reservation) => reservation.tableId),
   );
-  finalTableStatuses.set(4, 'OCCUPIED');
-  finalTableStatuses.set(2, 'CLEANING');
-  finalTableStatuses.set(5, 'CLEANING');
-  finalTableStatuses.set(6, 'CLEANING');
-  await Promise.all(
-    [...finalTableStatuses].map(([tableNumber, status]) =>
-      prisma.restaurantTable.updateMany({ where: { tableNumber }, data: { status } }),
-    ),
-  );
+
+  const tableRecords = await prisma.restaurantTable.findMany({
+    select: { id: true, tableNumber: true },
+  });
+  for (const table of tableRecords) {
+    const status = openTableIds.has(table.id)
+      ? 'OCCUPIED'
+      : reservedTableIds.has(table.id)
+        ? 'RESERVED'
+        : recentlyCompletedTableIds.has(table.id)
+          ? 'CLEANING'
+          : (STATUS_BY_TABLE[table.tableNumber] ?? 'AVAILABLE');
+    await prisma.restaurantTable.update({ where: { id: table.id }, data: { status } });
+  }
 
   const counts = await prisma.$transaction([
     prisma.user.count(),

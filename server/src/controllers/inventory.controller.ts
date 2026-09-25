@@ -4,6 +4,7 @@ import type {
   ListInventoryItemsQuery,
   ListInventoryTransactionsQuery,
   RecordInventoryTransactionInput,
+  ReorderSuggestionsQuery,
   UpdateInventoryItemInput,
 } from '@restaurant/shared';
 import * as inventoryService from '../services/inventory.service.js';
@@ -42,6 +43,12 @@ export const deleteItem = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.validatedParams as { id: string };
   await inventoryService.deleteItem(id);
   res.status(200).json({ success: true, data: null });
+});
+
+export const getReorderSuggestions = asyncHandler(async (req: Request, res: Response) => {
+  const query = req.validatedQuery as unknown as ReorderSuggestionsQuery;
+  const result = await inventoryService.getReorderSuggestions(query);
+  res.status(200).json({ success: true, data: result });
 });
 
 export const listTransactions = asyncHandler(async (req: Request, res: Response) => {

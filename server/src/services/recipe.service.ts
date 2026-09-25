@@ -6,7 +6,7 @@ import type {
   UpdateRecipeInput,
 } from '@restaurant/shared';
 import { Prisma } from '@prisma/client';
-import { prisma } from '../config/prisma.js';
+import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { fromCents, toCents } from '../utils/money.js';
 
@@ -164,7 +164,7 @@ export async function updateRecipe(id: string, input: UpdateRecipeInput): Promis
       include: recipeInclude(),
     });
     return toRecipe(recipe);
-  });
+  }, TRANSACTION_OPTIONS);
 }
 
 export async function deleteRecipe(id: string): Promise<void> {

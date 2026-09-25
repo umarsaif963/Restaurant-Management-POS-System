@@ -759,6 +759,30 @@ export interface RecipeProfile {
 
 // ---- Inputs ----
 
+export interface ReorderSuggestionItem {
+  item: InventoryItemProfile;
+  /** Units consumed per day (net of returns) over the lookback window. */
+  consumptionPerDay: string;
+  /** Days of stock left at current velocity, or '0' when out; null if no velocity data yet. */
+  daysOfStock: string | null;
+  /** Cover needed: velocity × lead days + the item's minimum buffer. */
+  projectedNeed: string;
+  /** Suggested purchase quantity: max(0, projectedNeed − on hand). */
+  suggestedQuantity: string;
+}
+
+export interface ReorderSuggestions {
+  generatedAt: string;
+  windowDays: number;
+  leadDays: number;
+  items: ReorderSuggestionItem[];
+}
+
+export interface ReorderSuggestionsQuery {
+  windowDays?: number;
+  leadDays?: number;
+}
+
 export interface CreateInventoryItemInput {
   name: string;
   sku?: string | null;

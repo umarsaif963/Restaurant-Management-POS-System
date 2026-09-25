@@ -6,7 +6,7 @@ import type {
   Paginated,
 } from '@restaurant/shared';
 import { Prisma } from '@prisma/client';
-import { prisma } from '../config/prisma.js';
+import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { realtime } from '../sockets/realtime.js';
 
@@ -163,7 +163,7 @@ export async function updateKitchenOrderStatus(
       },
       include: kitchenInclude(),
     });
-  });
+  }, TRANSACTION_OPTIONS);
 
   realtime.kitchenUpdated({ kitchenOrderId: id, orderId: kitchen.orderId });
 

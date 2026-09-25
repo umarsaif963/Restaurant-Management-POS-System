@@ -5,7 +5,7 @@ import type {
   RecordPaymentInput,
   RefundPaymentInput,
 } from '@restaurant/shared';
-import { prisma } from '../config/prisma.js';
+import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { fromCents, toCents } from '../utils/money.js';
 import { derivePaymentStatus } from '../utils/billing.js';
@@ -116,7 +116,7 @@ export async function recordPayment(
       },
     });
     return created;
-  });
+  }, TRANSACTION_OPTIONS);
 
   const order = await refreshPaymentStatus(orderId, grandTotalCents);
   realtime.orderUpdated({ orderId });
@@ -210,7 +210,7 @@ export async function refundPayment(
       },
     });
     return created;
-  });
+  }, TRANSACTION_OPTIONS);
 
   const refreshed = await refreshPaymentStatus(orderId, toCents(order.grandTotal.toString()));
   realtime.orderUpdated({ orderId });

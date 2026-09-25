@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { INVENTORY_TRANSACTION_TYPES } from '@restaurant/shared';
-import type { InventoryItemProfile } from '@restaurant/shared';
+import type { InventoryItemProfile, InventoryTransactionType } from '@restaurant/shared';
 import { Modal } from '@/components/ui/Modal';
 import { FormField } from '@/components/ui/FormField';
 import { Spinner } from '@/components/ui/Spinner';
@@ -25,10 +25,12 @@ type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 interface TransactionModalProps {
   open: boolean;
   item: InventoryItemProfile | null;
+  presetType?: InventoryTransactionType;
+  presetQuantity?: string;
   onClose: () => void;
 }
 
-export function TransactionModal({ open, item, onClose }: TransactionModalProps) {
+export function TransactionModal({ open, item, presetType, presetQuantity, onClose }: TransactionModalProps) {
   const toast = useToast();
   const [record, { isLoading: recording }] = useRecordInventoryTransactionMutation();
 
@@ -40,14 +42,14 @@ export function TransactionModal({ open, item, onClose }: TransactionModalProps)
     formState: { errors },
   } = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
-    defaultValues: { type: 'PURCHASE', quantity: '', note: '' },
+    defaultValues: { type: presetType ?? 'PURCHASE', quantity: presetQuantity ?? '', note: '' },
   });
 
   useEffect(() => {
     if (open) {
-      reset({ type: 'PURCHASE', quantity: '', note: '' });
+      reset({ type: presetType ?? 'PURCHASE', quantity: presetQuantity ?? '', note: '' });
     }
-  }, [open, reset]);
+  }, [open, presetType, presetQuantity, reset]);
 
   const type = watch('type');
   const quantity = watch('quantity');
