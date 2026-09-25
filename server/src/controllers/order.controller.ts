@@ -8,6 +8,7 @@ import type {
 } from '@restaurant/shared';
 import * as orderService from '../services/order.service.js';
 import * as receiptService from '../services/receipt.service.js';
+import * as inventoryService from '../services/inventory.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 function currentUserId(req: Request): string {
@@ -30,6 +31,12 @@ export const getReceipt = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.validatedParams as { id: string };
   const receipt = await receiptService.buildReceipt(id);
   res.status(200).json({ success: true, data: { receipt } });
+});
+
+export const getInventoryMovements = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.validatedParams as { id: string };
+  const result = await inventoryService.listOrderInventoryMovements(id);
+  res.status(200).json({ success: true, data: result });
 });
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {

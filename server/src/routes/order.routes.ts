@@ -31,6 +31,11 @@ router.get(
   validate({ params: resourceIdParamsSchema }),
   orderController.getReceipt,
 );
+router.get(
+  '/:id/inventory-movements',
+  validate({ params: resourceIdParamsSchema }),
+  orderController.getInventoryMovements,
+);
 
 router.post(
   '/',

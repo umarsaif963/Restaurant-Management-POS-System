@@ -2,6 +2,7 @@ import type {
   AddOrderItemsInput,
   ApiResponse,
   CreateOrderInput,
+  InventoryTransactionProfile,
   ListOrdersQuery,
   OrderProfile,
   Paginated,
@@ -34,6 +35,11 @@ export const orderApi = apiSlice.injectEndpoints({
     getReceipt: build.query<ReceiptView, string>({
       query: (id) => ({ url: `/v1/orders/${id}/receipt`, method: 'GET' }),
       transformResponse: (response: ApiResponse<{ receipt: ReceiptView }>) => response.data!.receipt,
+      providesTags: (_result, _error, id) => [{ type: 'Orders' as const, id }],
+    }),
+    getOrderInventoryMovements: build.query<{ items: InventoryTransactionProfile[] }, string>({
+      query: (id) => ({ url: `/v1/orders/${id}/inventory-movements`, method: 'GET' }),
+      transformResponse: (response: ApiResponse<{ items: InventoryTransactionProfile[] }>) => response.data!,
       providesTags: (_result, _error, id) => [{ type: 'Orders' as const, id }],
     }),
     createOrder: build.mutation<OrderProfile, CreateOrderInput>({
@@ -83,6 +89,7 @@ export const {
   useListOrdersQuery,
   useGetOrderQuery,
   useGetReceiptQuery,
+  useGetOrderInventoryMovementsQuery,
   useCreateOrderMutation,
   useUpdateOrderMutation,
   useAddOrderItemsMutation,

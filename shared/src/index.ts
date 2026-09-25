@@ -726,6 +726,8 @@ export interface InventoryTransactionProfile {
   unitCost: string | null;
   note: string | null;
   referenceIds: string | null;
+  /** Order that triggered the movement, when the movement is order-based. */
+  order: { id: string; orderNumber: string } | null;
   userName: string | null;
   createdAt: string;
 }

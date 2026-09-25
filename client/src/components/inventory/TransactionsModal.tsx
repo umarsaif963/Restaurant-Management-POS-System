@@ -1,4 +1,5 @@
 import type { InventoryItemProfile, ListInventoryTransactionsQuery } from '@restaurant/shared';
+import { Link } from 'react-router-dom';
 import { Modal } from '@/components/ui/Modal';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -42,6 +43,16 @@ export function TransactionsModal({ open, item, onClose }: TransactionsModalProp
                   </Badge>
                   <span className="font-medium text-slate-800">{txn.quantity}</span>
                 </div>
+                {txn.order && (
+                  <p className="mt-1">
+                    <Link
+                      to={`/orders?order=${txn.order.id}`}
+                      className="text-xs font-semibold text-brand-700 transition hover:underline"
+                    >
+                      {txn.order.orderNumber} →
+                    </Link>
+                  </p>
+                )}
                 {txn.note && <p className="mt-1 text-xs text-slate-500">{txn.note}</p>}
                 <p className="mt-1 text-xs text-slate-400">
                   {formatDateTime(txn.createdAt)} · {txn.userName ?? 'System'}

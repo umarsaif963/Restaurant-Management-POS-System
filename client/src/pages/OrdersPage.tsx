@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ClipboardList, Eye, RefreshCw, Search } from 'lucide-react';
 import type { ListOrdersQuery, OrderStatus, OrderType, PaymentStatus } from '@restaurant/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -28,8 +29,18 @@ export function OrdersPage() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | ''>('');
   const [search, setSearch] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const debouncedSearch = useDebounce(search, 300);
+
+  useEffect(() => {
+    const orderId = searchParams.get('order');
+    if (orderId) {
+      setActiveId(orderId);
+      searchParams.delete('order');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     setPage(1);

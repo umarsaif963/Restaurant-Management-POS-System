@@ -170,7 +170,14 @@ type TransactionRow = {
   createdAt: Date;
 };
 
-function toTransaction(row: TransactionRow, itemName: string, userName: string | null): InventoryTransactionProfile {
+type OrderRef = { id: string; orderNumber: string };
+
+function toTransaction(
+  row: TransactionRow,
+  itemName: string,
+  userName: string | null,
+  order: OrderRef | null,
+): InventoryTransactionProfile {
   return {
     id: row.id,
     inventoryItemId: row.inventoryItemId,
@@ -181,9 +188,23 @@ function toTransaction(row: TransactionRow, itemName: string, userName: string |
     unitCost: row.unitCost?.toString() ?? null,
     note: row.note,
     referenceIds: row.referenceIds,
+    order,
     userName,
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+/**
+ * Resolves which orders (if any) the movement rows were caused by, so the
+ * ledger can link each order-based entry back to its order.
+ */
+async function orderRefByIds(ids: string[]): Promise<Map<string, OrderRef>> {
+  if (ids.length === 0) return new Map();
+  const orders = await prisma.order.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, orderNumber: true },
+  });
+  return new Map(orders.map((order) => [order.id, order]));
 }
 
 export async function listTransactions(
@@ -208,25 +229,76 @@ export async function listTransactions(
 
   const itemIds = [...new Set(rows.map((row) => row.inventoryItemId))];
   const userIds = [...new Set(rows.map((row) => row.userId).filter((id): id is string => id !== null))];
-  const [items, users] = await Promise.all([
+  const orderIds = [...new Set(rows.map((row) => row.referenceIds).filter((id): id is string => id !== null))];
+  const [items, users, orders] = await Promise.all([
     itemIds.length > 0
       ? prisma.inventoryItem.findMany({ where: { id: { in: itemIds } }, select: { id: true, name: true } })
       : Promise.resolve([] as { id: string; name: string }[]),
     userIds.length > 0
       ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } })
       : Promise.resolve([] as { id: string; name: string }[]),
+    orderRefByIds(orderIds),
   ]);
   const itemNameById = new Map(items.map((item) => [item.id, item.name]));
   const userNameById = new Map(users.map((user) => [user.id, user.name]));
 
   return {
     items: rows.map((row) =>
-      toTransaction(row, itemNameById.get(row.inventoryItemId) ?? 'Unknown item', row.userId ? (userNameById.get(row.userId) ?? null) : null),
+      toTransaction(
+        row,
+        itemNameById.get(row.inventoryItemId) ?? 'Unknown item',
+        row.userId ? (userNameById.get(row.userId) ?? null) : null,
+        row.referenceIds ? (orders.get(row.referenceIds) ?? null) : null,
+      ),
     ),
     page,
     limit,
     total,
     totalPages: Math.ceil(total / limit),
+  };
+}
+
+/**
+ * The stock movements a single order caused — its SALE (consumed) and
+ * ORDER_CANCEL (returned) ledger rows in chronological order. Used by the
+ * order detail view so staff can see exactly what an order drew from stock.
+ */
+export async function listOrderInventoryMovements(
+  orderId: string,
+): Promise<{ items: InventoryTransactionProfile[] }> {
+  const rows = await prisma.inventoryTransaction.findMany({
+    where: {
+      referenceIds: orderId,
+      type: { in: [InventoryTransactionType.SALE, InventoryTransactionType.ORDER_CANCEL] },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (rows.length === 0) return { items: [] };
+
+  const itemIds = [...new Set(rows.map((row) => row.inventoryItemId))];
+  const userIds = [...new Set(rows.map((row) => row.userId).filter((id): id is string => id !== null))];
+  const [items, users, order] = await Promise.all([
+    itemIds.length > 0
+      ? prisma.inventoryItem.findMany({ where: { id: { in: itemIds } }, select: { id: true, name: true } })
+      : Promise.resolve([] as { id: string; name: string }[]),
+    userIds.length > 0
+      ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } })
+      : Promise.resolve([] as { id: string; name: string }[]),
+    prisma.order.findUnique({ where: { id: orderId }, select: { id: true, orderNumber: true } }),
+  ]);
+  const itemNameById = new Map(items.map((item) => [item.id, item.name]));
+  const userNameById = new Map(users.map((user) => [user.id, user.name]));
+  const orderRef = order ? { id: order.id, orderNumber: order.orderNumber } : null;
+
+  return {
+    items: rows.map((row) =>
+      toTransaction(
+        row,
+        itemNameById.get(row.inventoryItemId) ?? 'Unknown item',
+        row.userId ? (userNameById.get(row.userId) ?? null) : null,
+        orderRef,
+      ),
+    ),
   };
 }
 
@@ -299,5 +371,5 @@ export async function recordTransaction(
   });
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
-  return toTransaction(created, item.name, user?.name ?? null);
+  return toTransaction(created, item.name, user?.name ?? null, null);
 }

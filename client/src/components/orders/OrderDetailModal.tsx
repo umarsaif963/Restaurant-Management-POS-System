@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, Plus, Printer, Search, Trash2 } from 'lucide-react';
+import { ClipboardList, History, Plus, Printer, Search, Trash2 } from 'lucide-react';
 import type { MenuItemProfile, OrderStatus } from '@restaurant/shared';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
@@ -8,6 +8,7 @@ import { ItemPickModal, type PickedLine } from '@/components/orders/ItemPickModa
 import {
   useAddOrderItemsMutation,
   useGetOrderQuery,
+  useGetOrderInventoryMovementsQuery,
   useRemoveOrderItemMutation,
   useUpdateOrderStatusMutation,
 } from '@/store/api/orderApi';
@@ -17,6 +18,7 @@ import { useAppSelector } from '@/store/hooks';
 import { useToast } from '@/hooks/useToast';
 import { useDebounce } from '@/hooks/useDebounce';
 import { extractApiError } from '@/services/api';
+import { INVENTORY_TRANSACTION_TYPE_BADGE, INVENTORY_TRANSACTION_TYPE_LABELS } from '@/constants/inventory';
 import { PAYMENT_METHOD_ORDER, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_BADGE } from '@/constants/payment';
 import {
   ORDER_STATUS_BADGE,
@@ -75,6 +77,7 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
   const { data: payments, isFetching: paymentsFetching } = useListOrderPaymentsQuery(orderId ?? '', {
     skip: !orderId,
   });
+  const { data: movements } = useGetOrderInventoryMovementsQuery(orderId ?? '', { skip: !orderId });
 
   const [recordPayment] = useRecordPaymentMutation();
   const [refundPayment] = useRefundPaymentMutation();
@@ -586,6 +589,36 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
                   )}
                 </div>
               )}
+            </section>
+          )}
+
+          {movements && movements.items.length > 0 && (
+            <section className="border-t border-slate-100 pt-3">
+              <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <History className="h-3.5 w-3.5" />
+                Stock movements
+              </h3>
+              <ul className="space-y-1.5">
+                {movements.items.map((movement) => (
+                  <li
+                    key={movement.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Badge variant={INVENTORY_TRANSACTION_TYPE_BADGE[movement.type]}>
+                        {INVENTORY_TRANSACTION_TYPE_LABELS[movement.type]}
+                      </Badge>
+                      <span className="text-sm font-medium text-slate-800">{movement.itemName}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-slate-700">{movement.quantity}</p>
+                      <p className="text-xs text-slate-400">
+                        {movement.userName ?? 'System'} · {new Date(movement.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 
