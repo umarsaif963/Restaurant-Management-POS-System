@@ -17,6 +17,10 @@ import type {
 import { Prisma, type AddOn, type MenuCategory, type MenuItemVariation } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
+import {
+  getMaxProducibleForMenuItems,
+  type ProductAvailability,
+} from './inventory-consumption.service.js';
 
 function toCategory(category: MenuCategory & { _count?: { items: number } }): MenuCategoryProfile {
   return {
@@ -59,7 +63,22 @@ type MenuItemWithRelations = Prisma.MenuItemGetPayload<{
   };
 }>;
 
-function toItem(item: MenuItemWithRelations): MenuItemProfile {
+/**
+ * Strip the server-internal `menuItemId` before sending availability to the
+ * client; the parent menu item already identifies it.
+ */
+function toAvailabilityProfile(availability: ProductAvailability) {
+  return {
+    maxAvailable: availability.maxAvailable,
+    limits: availability.limits,
+    limitedBy: availability.limitedBy,
+  };
+}
+
+function toItem(
+  item: MenuItemWithRelations,
+  availability: ProductAvailability,
+): MenuItemProfile {
   return {
     id: item.id,
     name: item.name,
@@ -78,7 +97,13 @@ function toItem(item: MenuItemWithRelations): MenuItemProfile {
     updatedAt: item.updatedAt.toISOString(),
     variations: item.variations.map(toVariation),
     addOns: item.addOns.map(toAddOn),
+    availability: toAvailabilityProfile(availability),
   };
+}
+
+/** A product with no recipe is not stock-constrained, so nothing caps it. */
+function uncappedAvailability(menuItemId: string): ProductAvailability {
+  return { menuItemId, maxAvailable: null, limits: [], limitedBy: null };
 }
 
 const itemInclude = (): Prisma.MenuItemInclude => ({
@@ -174,8 +199,17 @@ export async function listItems(params: ListMenuItemsQuery): Promise<Paginated<M
     }),
   ]);
 
+  // One extra query for the whole page rather than one per item; this is the
+  // POS's hottest read path. Products without a recipe come back uncapped.
+  const availabilityByItemId = await getMaxProducibleForMenuItems(
+    prisma,
+    rows.map((row) => row.id),
+  );
+
   return {
-    items: rows.map(toItem),
+    items: rows.map((row) =>
+      toItem(row, availabilityByItemId.get(row.id) ?? uncappedAvailability(row.id)),
+    ),
     page,
     limit,
     total,
@@ -225,7 +259,8 @@ export async function createItem(input: CreateMenuItemInput): Promise<MenuItemPr
     },
     include: itemInclude(),
   });
-  return toItem(item);
+  // A brand new menu item cannot have a recipe yet, so it is not stock-capped.
+  return toItem(item, uncappedAvailability(item.id));
 }
 
 export async function updateItem(
@@ -241,7 +276,9 @@ export async function updateItem(
     data: input,
     include: itemInclude(),
   });
-  return toItem(item);
+  // This item may already have a recipe, so availability must be recomputed.
+  const availabilityByItemId = await getMaxProducibleForMenuItems(prisma, [item.id]);
+  return toItem(item, availabilityByItemId.get(item.id) ?? uncappedAvailability(item.id));
 }
 
 export async function deleteItem(id: string): Promise<void> {

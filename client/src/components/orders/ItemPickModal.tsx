@@ -3,6 +3,9 @@ import { Minus, Plus } from 'lucide-react';
 import type { MenuAddOnProfile, MenuItemProfile, MenuItemVariationProfile } from '@restaurant/shared';
 import { Modal } from '@/components/ui/Modal';
 
+/** Hard ceiling on a single cart line, independent of recipe stock. */
+const MAX_LINE_QUANTITY = 99;
+
 export interface PickedLine {
   menuItemId: string;
   quantity: number;
@@ -15,9 +18,15 @@ interface ItemPickModalProps {
   item: MenuItemProfile | null;
   onClose: () => void;
   onAdd: (line: PickedLine) => void;
+  /**
+   * How many of this product the cart may still take, already net of the stock
+   * other cart lines have claimed. `null` means the product is not recipe-capped
+   * and only the fixed per-line maximum applies.
+   */
+  maxQuantity?: number | null;
 }
 
-export function ItemPickModal({ item, onClose, onAdd }: ItemPickModalProps) {
+export function ItemPickModal({ item, onClose, onAdd, maxQuantity = null }: ItemPickModalProps) {
   const [variationId, setVariationId] = useState<string | undefined>(
     item?.variations.find((v) => v.isDefault)?.id ?? undefined,
   );
@@ -26,6 +35,13 @@ export function ItemPickModal({ item, onClose, onAdd }: ItemPickModalProps) {
   const [notes, setNotes] = useState('');
 
   if (!item) return null;
+
+  const quantityCeiling = Math.max(
+    1,
+    Math.min(MAX_LINE_QUANTITY, maxQuantity ?? MAX_LINE_QUANTITY),
+  );
+  // The modal may be opened for a product the cart has since filled up.
+  const effectiveQuantity = Math.min(quantity, quantityCeiling);
 
   const baseCents = Math.round(parseFloat(item.price) * 100);
   const variation = item.variations.find((v) => v.id === variationId);
@@ -59,10 +75,13 @@ export function ItemPickModal({ item, onClose, onAdd }: ItemPickModalProps) {
           <button
             type="button"
             className="btn-primary"
-            onClick={() => onAdd({ menuItemId: item.id, quantity, variationId, addOnIds, notes: notes.trim() || undefined })}
+            disabled={quantityCeiling < 1}
+            onClick={() => onAdd({ menuItemId: item.id, quantity: effectiveQuantity, variationId, addOnIds, notes: notes.trim() || undefined })}
           >
             <Plus className="h-4 w-4" />
-            Add to order — ${(lineCents / 100).toFixed(2)}
+            {quantityCeiling < 1
+              ? 'Out of stock'
+              : `Add to order — ${(lineCents / 100).toFixed(2)}`}
           </button>
         </>
       }
@@ -128,23 +147,35 @@ export function ItemPickModal({ item, onClose, onAdd }: ItemPickModalProps) {
             <button
               type="button"
               className="btn-secondary"
-              disabled={quantity <= 1}
+              disabled={effectiveQuantity <= 1}
               onClick={() => setQuantity((current) => Math.max(1, current - 1))}
               aria-label="Decrease quantity"
             >
               <Minus className="h-4 w-4" />
             </button>
-            <span className="w-10 text-center text-sm font-semibold text-slate-800">{quantity}</span>
+            <span className="w-10 text-center text-sm font-semibold text-slate-800">{effectiveQuantity}</span>
             <button
               type="button"
               className="btn-secondary"
-              disabled={quantity >= 99}
-              onClick={() => setQuantity((current) => Math.min(99, current + 1))}
+              disabled={effectiveQuantity >= quantityCeiling}
+              onClick={() => setQuantity((current) => Math.min(quantityCeiling, current + 1))}
               aria-label="Increase quantity"
+              title={
+                maxQuantity !== null && maxQuantity < MAX_LINE_QUANTITY
+                  ? `Only ${maxQuantity} more can be made with the stock left`
+                  : undefined
+              }
             >
               <Plus className="h-4 w-4" />
             </button>
           </div>
+          {maxQuantity !== null && maxQuantity < MAX_LINE_QUANTITY && (
+            <p className="mt-2 text-xs text-amber-600">
+              {maxQuantity <= 0
+                ? `No ${item.name} can be made with the stock left.`
+                : `Limited to ${maxQuantity} by remaining stock.`}
+            </p>
+          )}
         </section>
 
         <section>

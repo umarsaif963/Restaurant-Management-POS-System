@@ -28,6 +28,11 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useToast } from '@/hooks/useToast';
 import { ORDER_TYPE_BADGE, ORDER_TYPE_LABELS } from '@/constants/order';
 import { percentOf } from '@/utils/money';
+import {
+  describeCartLimit,
+  evaluateCartAvailability,
+  type CartAvailability,
+} from '@/utils/cartAvailability';
 
 interface CartAddOn extends OrderAddOnSnapshot {
   id: string;
@@ -49,6 +54,8 @@ interface CartLine {
 
 const ORDER_TYPES: OrderType[] = ['DINE_IN', 'TAKEAWAY', 'DELIVERY'];
 const CATEGORY_PAGE_SIZE = 60;
+/** Hard ceiling on a single cart line, independent of recipe stock. */
+const MAX_LINE_QUANTITY = 99;
 
 export function POSPage() {
   const toast = useToast();
@@ -95,6 +102,26 @@ export function POSPage() {
   const selectedTable = tables?.find((table) => table.id === tableId);
   const selectedCustomer = customers?.items.find((customer) => customer.id === customerId);
 
+  // Menu items already carry their recipe-derived stock ceiling from the
+  // server, so availability needs no extra request. Only the cart's own claims
+  // have to be subtracted, and that is pure arithmetic over cached data.
+  const itemsById = useMemo(
+    () => new Map((items?.items ?? []).map((item) => [item.id, item])),
+    [items?.items],
+  );
+
+  const availabilityByMenuItemId = useMemo(() => {
+    const map = new Map<string, CartAvailability>();
+    for (const item of items?.items ?? []) {
+      map.set(item.id, evaluateCartAvailability(item, cart, itemsById));
+    }
+    return map;
+  }, [items?.items, cart, itemsById]);
+
+  const uncapped: CartAvailability = { remaining: null, limitedBy: null, usage: new Map() };
+  const availabilityFor = (menuItemId: string): CartAvailability =>
+    availabilityByMenuItemId.get(menuItemId) ?? uncapped;
+
   const selectTable = (table: RestaurantTableProfile) => {
     setTableId((current) => (current === table.id ? null : table.id));
   };
@@ -111,6 +138,39 @@ export function POSPage() {
     }
     const notesValue = picked.notes?.trim() || '';
 
+    // Existing lines of the same configuration already hold part of the stock,
+    // so the ceiling is measured against everything else in the cart.
+    const existing = cart.find(
+      (line) =>
+        line.menuItemId === item.id &&
+        line.variationId === picked.variationId &&
+        line.addOns.map((addOn) => addOn.id).sort().join(',') === [...addOnIds].sort().join(',') &&
+        (line.notes ?? '') === notesValue,
+    );
+    const others = existing ? cart.filter((line) => line.key !== existing.key) : cart;
+    const { remaining, limitedBy } = evaluateCartAvailability(item, others, itemsById);
+
+    let quantity = picked.quantity;
+    if (remaining !== null && quantity > remaining) {
+      if (remaining <= 0) {
+        toast.error(
+          'Not enough stock',
+          limitedBy
+            ? `Only ${parseFloat(limitedBy.available)} ${limitedBy.name} left, which is not enough for another ${item.name}.`
+            : `There is not enough stock for another ${item.name}.`,
+        );
+        setPicking(null);
+        return;
+      }
+      toast.error(
+        'Quantity reduced',
+        `Only ${remaining} more ${item.name} can be made${
+          limitedBy ? `, limited by ${limitedBy.name}` : ''
+        }.`,
+      );
+      quantity = remaining;
+    }
+
     const key = [
       item.id,
       picked.variationId ?? '',
@@ -119,10 +179,10 @@ export function POSPage() {
     ].join('::');
 
     setCart((current) => {
-      const existing = current.find((line) => line.key === key);
-      if (existing) {
+      const currentLine = current.find((line) => line.key === key);
+      if (currentLine) {
         return current.map((line) =>
-          line.key === key ? { ...line, quantity: line.quantity + picked.quantity } : line,
+          line.key === key ? { ...line, quantity: line.quantity + quantity } : line,
         );
       }
       return [
@@ -138,7 +198,7 @@ export function POSPage() {
           addOns,
           notes: notesValue || undefined,
           taxRate: item.taxRate,
-          quantity: picked.quantity,
+          quantity,
         },
       ];
     });
@@ -146,13 +206,31 @@ export function POSPage() {
   }
 
   const changeQuantity = (key: string, delta: number) => {
-    setCart((current) =>
-      current
-        .map((line) =>
-          line.key === key ? { ...line, quantity: Math.max(1, line.quantity + delta) } : line,
+    setCart((current) => {
+      const line = current.find((candidate) => candidate.key === key);
+      if (!line) return current;
+
+      if (delta > 0) {
+        const item = itemsById.get(line.menuItemId);
+        // The line's own units are excluded, otherwise the cap would shrink as
+        // the quantity grows and the user could never get past the first unit.
+        const others = current.filter((candidate) => candidate.key !== key);
+        const { remaining } = item
+          ? evaluateCartAvailability(item, others, itemsById)
+          : { remaining: null };
+        if (remaining !== null && line.quantity + delta > remaining) {
+          return current;
+        }
+      }
+
+      return current
+        .map((candidate) =>
+          candidate.key === key
+            ? { ...candidate, quantity: Math.min(MAX_LINE_QUANTITY, Math.max(1, candidate.quantity + delta)) }
+            : candidate,
         )
-        .filter((line) => line.quantity >= 1),
-    );
+        .filter((candidate) => candidate.quantity >= 1);
+    });
   };
 
   const removeLine = (key: string) => {
@@ -390,6 +468,8 @@ export function POSPage() {
                         </div>
                       );
                     }
+                    const stock = availabilityFor(item.id);
+                    const soldOut = stock.remaining === 0;
                     return (
                       <button
                         key={item.id}
@@ -402,6 +482,16 @@ export function POSPage() {
                           ${item.price}
                           {hasOptions && <span className="ml-2 text-xs font-normal text-slate-400">Customize</span>}
                         </p>
+                        {soldOut ? (
+                          <p className="mt-1.5 text-xs font-medium text-red-600">Out of stock</p>
+                        ) : stock.remaining !== null ? (
+                          <p className="mt-1.5 text-xs text-slate-500">
+                            {stock.remaining} left
+                            {stock.limitedBy && (
+                              <span className="text-slate-400"> · {stock.limitedBy.name}</span>
+                            )}
+                          </p>
+                        ) : null}
                       </button>
                     );
                   })}
@@ -444,6 +534,20 @@ export function POSPage() {
                 Math.round(parseFloat(line.priceAdjustment) * 100) +
                 line.addOns.reduce((sum, addOn) => sum + Math.round(parseFloat(addOn.price) * 100), 0);
               const lineTotal = unit * line.quantity;
+              // Judge the ceiling without this line's own claim on stock.
+              const lineAvailability = (() => {
+                const item = itemsById.get(line.menuItemId);
+                if (!item) return uncapped;
+                return evaluateCartAvailability(
+                  item,
+                  cart.filter((candidate) => candidate.key !== line.key),
+                  itemsById,
+                );
+              })();
+              const atStockLimit = lineAvailability.remaining === 0;
+              const atMax = line.quantity >= MAX_LINE_QUANTITY;
+              const increaseDisabled = atStockLimit || atMax;
+              const limitMessage = describeCartLimit(lineAvailability);
               return (
                 <li key={line.key} className="rounded-lg border border-slate-100 p-2.5">
                   <div className="flex items-start justify-between gap-2">
@@ -459,6 +563,9 @@ export function POSPage() {
                     </p>
                   )}
                   {line.notes && <p className="mt-0.5 text-xs italic text-slate-400">“{line.notes}”</p>}
+                  {limitMessage && (
+                    <p className="mt-1 text-xs font-medium text-amber-600">{limitMessage}</p>
+                  )}
                   <div className="mt-2 flex items-center gap-2">
                     <button
                       type="button"
@@ -472,9 +579,16 @@ export function POSPage() {
                     <button
                       type="button"
                       className="btn-secondary px-2 py-1"
-                      disabled={line.quantity >= 99}
+                      disabled={increaseDisabled}
                       onClick={() => changeQuantity(line.key, 1)}
                       aria-label="Increase quantity"
+                      title={
+                        atStockLimit
+                          ? (limitMessage ?? 'No more stock available')
+                          : atMax
+                            ? `Maximum ${MAX_LINE_QUANTITY} per line`
+                            : undefined
+                      }
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
@@ -540,7 +654,12 @@ export function POSPage() {
         )}
       </Card>
 
-      <ItemPickModal item={picking} onClose={() => setPicking(null)} onAdd={addLine} />
+      <ItemPickModal
+        item={picking}
+        maxQuantity={picking ? availabilityFor(picking.id).remaining : null}
+        onClose={() => setPicking(null)}
+        onAdd={addLine}
+      />
     </div>
   );
 }

@@ -335,6 +335,14 @@ export interface MenuItemProfile {
   updatedAt: string;
   variations: MenuItemVariationProfile[];
   addOns: MenuAddOnProfile[];
+  /**
+   * Recipe-derived stock ceiling for this product. Present on every item so
+   * the POS can read `availability.maxAvailable` without a null check on the
+   * container. `maxAvailable: null` inside means the product has no recipe and
+   * is therefore not stock-constrained — that is different from `0`, which
+   * means the recipe exists but stock is exhausted.
+   */
+  availability: ProductAvailabilityProfile;
 }
 
 export interface CreateVariationInput {
@@ -714,6 +722,41 @@ export interface InventoryItemProfile {
   health: StockHealth;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * One ingredient's contribution to a product's stock ceiling. Quantities are
+ * strings (matching the rest of the inventory contract) and are always in the
+ * inventory item's own unit.
+ */
+export interface AvailabilityLimitProfile {
+  inventoryItemId: string;
+  name: string;
+  /** Stock on hand, in the inventory item's unit. */
+  available: string;
+  /** What one unit of the product consumes, in the inventory item's unit. */
+  perServing: string;
+  /**
+   * The same figure in exact integer milli-units, unrounded. Use this — not
+   * `perServing` — when accumulating usage, because a 3-decimal string cannot
+   * represent a per-serving amount for a yield that does not divide evenly.
+   */
+  perServingMillis: number;
+  /** How many units this single ingredient alone would allow. */
+  maxByThisIngredient: number;
+}
+
+/**
+ * Recipe-derived availability for a product: the most restrictive ingredient
+ * caps the whole product.
+ */
+export interface ProductAvailabilityProfile {
+  /** `null` means the product has no recipe, so stock does not cap it. */
+  maxAvailable: number | null;
+  /** Per-ingredient breakdown, most restrictive first. */
+  limits: AvailabilityLimitProfile[];
+  /** The binding ingredient, or `null` when nothing caps this product. */
+  limitedBy: AvailabilityLimitProfile | null;
 }
 
 export interface InventoryTransactionProfile {

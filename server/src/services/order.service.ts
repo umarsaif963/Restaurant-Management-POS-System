@@ -15,7 +15,12 @@ import { ApiError } from '../utils/ApiError.js';
 import { fromCents, percentOf, toCents } from '../utils/money.js';
 import { derivePaymentStatus } from '../utils/billing.js';
 import { realtime } from '../sockets/realtime.js';
-import { consumeIngredients, reverseConsumption, reverseIngredients } from './inventory-consumption.service.js';
+import {
+  assertStockAvailable,
+  consumeIngredients,
+  reverseConsumption,
+  reverseIngredients,
+} from './inventory-consumption.service.js';
 
 const ALLOW_ITEM_EDITS: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CONFIRMED];
 
@@ -270,6 +275,12 @@ export async function createOrder(
 
   const settings = await getSettings();
   const lines = await resolveLines(input.items);
+  // `lines` already carries the menuItemId and quantity the stock math needs,
+  // so the same shape feeds both the totals and the availability gate.
+  const consumptionLines = lines.map((line) => ({
+    menuItemId: line.menuItemId,
+    quantity: line.quantity,
+  }));
   const { subtotalCents, taxCents } = buildTotals(lines, []);
   const { discountCents, serviceChargeCents, grandTotalCents } = orderTotals(
     subtotalCents,
@@ -285,6 +296,12 @@ export async function createOrder(
     const orderNumber = await nextOrderNumber(settings.orderNumberPrefix, settings.orderNumberStart);
     try {
       const order = await prisma.$transaction(async (tx) => {
+        // Fail fast if the cart cannot be satisfied by current stock, before any
+        // write happens. Runs inside the transaction so the check and the order
+        // see one consistent view; the authoritative atomic deduction still
+        // happens later, in consumeIngredients, when the order is confirmed.
+        await assertStockAvailable(tx, consumptionLines, 'Insufficient stock for this order.');
+
         const created = await tx.order.create({
           data: {
             orderNumber,
