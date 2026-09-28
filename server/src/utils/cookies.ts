@@ -2,6 +2,7 @@ import type { Response } from 'express';
 import {
   ACCESS_TOKEN_TTL_MS,
   COOKIE_NAMES,
+  COOKIE_SAME_SITE,
   COOKIE_SECURE,
   REFRESH_COOKIE_PATH,
   REFRESH_SESSION_TTL_MS,
@@ -17,13 +18,13 @@ import {
 function cookieBase(): {
   httpOnly: boolean;
   secure: boolean;
-  sameSite: 'lax';
+  sameSite: 'lax' | 'none';
   path: string;
 } {
   return {
     httpOnly: true,
     secure: COOKIE_SECURE,
-    sameSite: 'lax',
+    sameSite: COOKIE_SAME_SITE,
     path: '/',
   };
 }
@@ -41,10 +42,17 @@ export function setAuthCookies(res: Response, accessToken: string, refreshToken:
 }
 
 export function clearAuthCookies(res: Response): void {
-  res.clearCookie(COOKIE_NAMES.ACCESS, { httpOnly: true, sameSite: 'lax', secure: COOKIE_SECURE, path: '/' });
+  // Attributes must match those used when the cookie was set, otherwise the
+  // browser keeps the original cookie instead of removing it.
+  res.clearCookie(COOKIE_NAMES.ACCESS, {
+    httpOnly: true,
+    sameSite: COOKIE_SAME_SITE,
+    secure: COOKIE_SECURE,
+    path: '/',
+  });
   res.clearCookie(COOKIE_NAMES.REFRESH, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: COOKIE_SAME_SITE,
     secure: COOKIE_SECURE,
     path: REFRESH_COOKIE_PATH,
   });

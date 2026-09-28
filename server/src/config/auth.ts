@@ -51,6 +51,18 @@ export const PASSWORD_RESET_TTL_MS = ms(env.PASSWORD_RESET_EXPIRES_IN);
 export const COOKIE_SECURE = env.NODE_ENV !== 'development';
 
 /**
+ * `SameSite` policy for the auth cookies.
+ *
+ * Development serves the client and the API from the same site, so `lax` is
+ * preferred. In production the client (Vercel) and the API (Bonto) are
+ * different sites, so the browser will not attach a `lax` cookie to the
+ * client's cross-site XHRs and every request after login would be 401.
+ * `none` is required there, and browsers only honour `none` over HTTPS, which
+ * is already guaranteed by `COOKIE_SECURE`.
+ */
+export const COOKIE_SAME_SITE = env.NODE_ENV === 'development' ? 'lax' : 'none';
+
+/**
  * Restrict the refresh cookie to the auth API namespace so it is never
  * forwarded to unrelated endpoints (defense in depth).
  */
