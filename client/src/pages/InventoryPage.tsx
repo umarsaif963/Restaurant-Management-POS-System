@@ -131,24 +131,24 @@ export function InventoryPage() {
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="scroll-x">
               <table className="w-full min-w-[820px] text-left text-sm">
                 <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Item</th>
-                    <th className="px-4 py-3 font-semibold">Stock</th>
-                    <th className="px-4 py-3 font-semibold">Unit</th>
-                    <th className="px-4 py-3 font-semibold">Cost</th>
-                    <th className="px-4 py-3 font-semibold">Health</th>
-                    <th className="px-4 py-3 font-semibold">Category</th>
-                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Item</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Stock</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Unit</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Cost</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Health</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Category</th>
+                    <th className="px-3 sm:px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {isFetching && !data ? (
                     Array.from({ length: 6 }).map((_, index) => (
                       <tr key={index}>
-                        <td className="px-4 py-3" colSpan={7}>
+                        <td className="px-3 sm:px-4 py-3" colSpan={7}>
                           <Skeleton className="h-5 w-full" />
                         </td>
                       </tr>
@@ -156,23 +156,23 @@ export function InventoryPage() {
                   ) : data && data.items.length > 0 ? (
                     data.items.map((item) => (
                       <tr key={item.id} className="transition hover:bg-slate-50">
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           <p className="font-medium text-slate-800">{item.name}</p>
                           {item.sku && <p className="text-xs font-mono text-slate-500">{item.sku}</p>}
                         </td>
-                        <td className="px-4 py-3 font-semibold text-slate-800">
+                        <td className="px-3 sm:px-4 py-3 font-semibold text-slate-800">
                           {item.quantity}
                           {!item.isActive && (
                             <span className="ml-2 text-xs font-normal text-slate-400">inactive</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-slate-600">{STOCK_UNIT_LABELS[item.unit]}</td>
-                        <td className="px-4 py-3 text-slate-600">${item.costPrice}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3 text-slate-600">{STOCK_UNIT_LABELS[item.unit]}</td>
+                        <td className="px-3 sm:px-4 py-3 text-slate-600">${item.costPrice}</td>
+                        <td className="px-3 sm:px-4 py-3">
                           <Badge variant={STOCK_HEALTH_BADGE[item.health]}>{STOCK_HEALTH_LABELS[item.health]}</Badge>
                         </td>
-                        <td className="px-4 py-3 text-slate-600">{item.category ?? '—'}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3 text-slate-600">{item.category ?? '—'}</td>
+                        <td className="px-3 sm:px-4 py-3">
                           <div className="flex justify-end gap-1">
                             <button
                               type="button"

@@ -186,7 +186,7 @@ export function ReportsPage() {
                 description="Completed orders within the selected dates appear here."
               />
             ) : (
-              <div className="overflow-x-auto">
+              <div className="scroll-x">
                 <table className="w-full min-w-[480px] text-left text-sm">
                   <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                     <tr>

@@ -97,21 +97,21 @@ export function SuppliersPage() {
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="scroll-x">
               <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Supplier</th>
-                    <th className="px-4 py-3 font-semibold">Contact</th>
-                    <th className="px-4 py-3 font-semibold">Purchases</th>
-                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Supplier</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Contact</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Purchases</th>
+                    <th className="px-3 sm:px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {isFetching && !data ? (
                     Array.from({ length: 5 }).map((_, index) => (
                       <tr key={index}>
-                        <td className="px-4 py-3" colSpan={4}>
+                        <td className="px-3 sm:px-4 py-3" colSpan={4}>
                           <Skeleton className="h-5 w-full" />
                         </td>
                       </tr>
@@ -119,11 +119,11 @@ export function SuppliersPage() {
                   ) : data && data.items.length > 0 ? (
                     data.items.map((supplier) => (
                       <tr key={supplier.id} className="transition hover:bg-slate-50">
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           <p className="font-medium text-slate-800">{supplier.name}</p>
                           {supplier.company && <p className="text-xs text-slate-500">{supplier.company}</p>}
                         </td>
-                        <td className="px-4 py-3 text-slate-600">
+                        <td className="px-3 sm:px-4 py-3 text-slate-600">
                           {supplier.phone ? (
                             <p className="flex items-center gap-1">
                               <Phone className="h-3.5 w-3.5 text-slate-400" />
@@ -134,8 +134,8 @@ export function SuppliersPage() {
                           )}
                           {supplier.email && <p className="text-xs text-slate-400">{supplier.email}</p>}
                         </td>
-                        <td className="px-4 py-3 text-slate-600">{supplier.purchaseCount}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3 text-slate-600">{supplier.purchaseCount}</td>
+                        <td className="px-3 sm:px-4 py-3">
                           {canManage && (
                             <div className="flex justify-end gap-1">
                               <button

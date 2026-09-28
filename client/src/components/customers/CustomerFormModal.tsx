@@ -112,7 +112,7 @@ export function CustomerFormModal({ open, customer, onClose }: CustomerFormModal
         <FormField label="Full name" htmlFor="customer-name" error={errors.name?.message} required>
           <input id="customer-name" className="input" autoComplete="off" {...register('name')} />
         </FormField>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField label="Phone" htmlFor="customer-phone" error={errors.phone?.message}>
             <input id="customer-phone" className="input" placeholder="Optional" {...register('phone')} />
           </FormField>

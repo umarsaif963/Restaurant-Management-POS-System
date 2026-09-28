@@ -100,22 +100,22 @@ export function RecipesPage() {
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="scroll-x">
               <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Recipe</th>
-                    <th className="px-4 py-3 font-semibold">Serves</th>
-                    <th className="px-4 py-3 font-semibold">Total cost</th>
-                    <th className="px-4 py-3 font-semibold">Cost / unit</th>
-                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Recipe</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Serves</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Total cost</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Cost / unit</th>
+                    <th className="px-3 sm:px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {isFetching && !data ? (
                     Array.from({ length: 6 }).map((_, index) => (
                       <tr key={index}>
-                        <td className="px-4 py-3" colSpan={5}>
+                        <td className="px-3 sm:px-4 py-3" colSpan={5}>
                           <Skeleton className="h-5 w-full" />
                         </td>
                       </tr>
@@ -123,7 +123,7 @@ export function RecipesPage() {
                   ) : data && data.items.length > 0 ? (
                     data.items.map((recipe) => (
                       <tr key={recipe.id} className="align-top transition hover:bg-slate-50">
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           <p className="font-medium text-slate-800">{recipe.name}</p>
                           <p className="text-xs text-slate-500">Menu item: {recipe.menuItemName}</p>
                           {recipe.hasIngredients ? (
@@ -139,10 +139,10 @@ export function RecipesPage() {
                             <p className="mt-1 text-xs text-amber-600">No ingredients — costs are zero.</p>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-slate-600">{recipe.yield}</td>
-                        <td className="px-4 py-3 font-medium text-slate-800">${recipe.totalCost}</td>
-                        <td className="px-4 py-3 text-slate-600">${recipe.costPerUnit}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3 text-slate-600">{recipe.yield}</td>
+                        <td className="px-3 sm:px-4 py-3 font-medium text-slate-800">${recipe.totalCost}</td>
+                        <td className="px-3 sm:px-4 py-3 text-slate-600">${recipe.costPerUnit}</td>
+                        <td className="px-3 sm:px-4 py-3">
                           {canManage && (
                             <div className="flex justify-end gap-1">
                               <button

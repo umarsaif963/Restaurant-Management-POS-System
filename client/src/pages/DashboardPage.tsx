@@ -306,7 +306,7 @@ export function DashboardPage() {
               icon={<Boxes className="h-4 w-4 text-slate-400" />}
               actions={<TrendingDown className="h-4 w-4 text-slate-400" />}
             >
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-lg bg-amber-50 px-4 py-3">
                   <p className="text-xs font-medium text-amber-700">Low stock</p>
                   <p className="mt-1 text-lg font-bold text-amber-800">{summary.inventory.lowStock}</p>

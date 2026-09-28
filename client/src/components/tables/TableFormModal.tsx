@@ -109,7 +109,7 @@ export function TableFormModal({ open, table, sections, onClose }: TableFormModa
       }
     >
       <form id="table-form" className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField label="Table number" htmlFor="table-number" error={errors.tableNumber?.message} required>
             <input id="table-number" type="number" min={1} className="input" {...register('tableNumber')} />
           </FormField>

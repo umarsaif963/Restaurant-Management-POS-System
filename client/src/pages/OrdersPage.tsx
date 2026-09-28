@@ -157,48 +157,48 @@ export function OrdersPage() {
           />
         ) : (
           <Card>
-            <div className="overflow-x-auto">
+            <div className="scroll-x">
               <table className="w-full min-w-[820px] text-left text-sm">
                 <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Order</th>
-                    <th className="px-4 py-3 font-semibold">Type</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 font-semibold">Payment</th>
-                    <th className="px-4 py-3 font-semibold">Seat</th>
-                    <th className="px-4 py-3 font-semibold">Items</th>
-                    <th className="px-4 py-3 font-semibold">Total</th>
-                    <th className="px-4 py-3 font-semibold">Created</th>
-                    <th className="px-4 py-3"><span className="sr-only">Open</span></th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Order</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Type</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Status</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Payment</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Seat</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Items</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Total</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Created</th>
+                    <th className="px-3 sm:px-4 py-3"><span className="sr-only">Open</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {data?.items.map((order) => (
                     <tr key={order.id} className="text-slate-700 transition hover:bg-slate-50/70">
-                      <td className="px-4 py-3 font-medium text-slate-900">{order.orderNumber}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3 font-medium text-slate-900">{order.orderNumber}</td>
+                      <td className="px-3 sm:px-4 py-3">
                         <Badge variant={ORDER_TYPE_BADGE[order.orderType]}>
                           {ORDER_TYPE_LABELS[order.orderType]}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3">
                         <Badge variant={ORDER_STATUS_BADGE[order.status]}>
                           {ORDER_STATUS_LABELS[order.status]}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3">
                         <Badge variant={PAYMENT_STATUS_BADGE[order.paymentStatus]}>
                           {PAYMENT_STATUS_LABELS[order.paymentStatus]}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3">
                         {order.orderType === 'DINE_IN' && order.tableNumber !== null
                           ? `Table ${String(order.tableNumber).padStart(2, '0')}`
                           : order.customerName ?? '—'}
                       </td>
-                      <td className="px-4 py-3">{order.items.length}</td>
-                      <td className="px-4 py-3 font-semibold text-slate-900">${order.grandTotal}</td>
-                      <td className="px-4 py-3 text-xs text-slate-500">
+                      <td className="px-3 sm:px-4 py-3">{order.items.length}</td>
+                      <td className="px-3 sm:px-4 py-3 font-semibold text-slate-900">${order.grandTotal}</td>
+                      <td className="px-3 sm:px-4 py-3 text-xs text-slate-500">
                         {new Date(order.createdAt).toLocaleString(undefined, {
                           month: 'short',
                           day: '2-digit',
@@ -206,7 +206,7 @@ export function OrdersPage() {
                           minute: '2-digit',
                         })}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-3 sm:px-4 py-3 text-right">
                         <button
                           type="button"
                           className="rounded p-1.5 text-slate-400 transition hover:bg-brand-50 hover:text-brand-700"

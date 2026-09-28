@@ -431,7 +431,7 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Collect payment
               </h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs text-slate-500">Amount ($)</label>
                   <input
@@ -459,7 +459,7 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
                 </div>
               </div>
               {method === 'CASH' && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label className="block text-xs text-slate-500">Cash tendered ($)</label>
                     <input

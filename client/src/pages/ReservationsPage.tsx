@@ -174,23 +174,23 @@ export function ReservationsPage() {
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="scroll-x">
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">When</th>
-                    <th className="px-4 py-3 font-semibold">Guest</th>
-                    <th className="px-4 py-3 font-semibold">Table</th>
-                    <th className="px-4 py-3 font-semibold">Party</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">When</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Guest</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Table</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Party</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Status</th>
+                    <th className="px-3 sm:px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {isFetching && !data ? (
                     Array.from({ length: 6 }).map((_, index) => (
                       <tr key={index}>
-                        <td className="px-4 py-3" colSpan={6}>
+                        <td className="px-3 sm:px-4 py-3" colSpan={6}>
                           <Skeleton className="h-5 w-full" />
                         </td>
                       </tr>
@@ -201,26 +201,26 @@ export function ReservationsPage() {
                       const deletable = reservation.status === 'PENDING' || reservation.status === 'CANCELLED';
                       return (
                         <tr key={reservation.id} className="transition hover:bg-slate-50">
-                          <td className="px-4 py-3">
+                          <td className="px-3 sm:px-4 py-3">
                             <p className="font-medium text-slate-800">{new Date(reservation.date).toLocaleString()}</p>
                             <p className="text-xs text-slate-400">
                               {new Date(reservation.date).toLocaleDateString(undefined, { weekday: 'short' })}
                             </p>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 sm:px-4 py-3">
                             <p className="font-medium text-slate-800">{reservation.customerName}</p>
                             <p className="text-xs text-slate-400">{reservation.phone ?? ''}</p>
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-3 sm:px-4 py-3 text-slate-600">
                             {reservation.tableNumber ? `Table ${reservation.tableNumber}` : '—'}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">{reservation.guests}</td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 sm:px-4 py-3 text-slate-600">{reservation.guests}</td>
+                          <td className="px-3 sm:px-4 py-3">
                             <Badge variant={RESERVATION_STATUS_BADGE[reservation.status]}>
                               {RESERVATION_STATUS_LABELS[reservation.status]}
                             </Badge>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 sm:px-4 py-3">
                             <div className="flex justify-end gap-1">
                               <button
                                 type="button"

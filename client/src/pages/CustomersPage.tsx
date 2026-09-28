@@ -100,23 +100,23 @@ export function CustomersPage() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="scroll-x">
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Customer</th>
-                  <th className="px-4 py-3 font-semibold">Phone</th>
-                  <th className="px-4 py-3 font-semibold">Email</th>
-                  <th className="px-4 py-3 font-semibold">Orders</th>
-                  <th className="px-4 py-3 font-semibold">Total spent</th>
-                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold">Customer</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold">Phone</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold">Email</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold">Orders</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold">Total spent</th>
+                  <th className="px-3 sm:px-4 py-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {isFetching && !data ? (
                   Array.from({ length: 6 }).map((_, index) => (
                     <tr key={index}>
-                      <td className="px-4 py-3" colSpan={6}>
+                      <td className="px-3 sm:px-4 py-3" colSpan={6}>
                         <Skeleton className="h-5 w-full" />
                       </td>
                     </tr>
@@ -124,15 +124,15 @@ export function CustomersPage() {
                 ) : data && data.items.length > 0 ? (
                   data.items.map((customer) => (
                     <tr key={customer.id} className="transition hover:bg-slate-50">
-                      <td className="px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3">
                         <p className="font-medium text-slate-800">{customer.name}</p>
                         {customer.address && <p className="text-xs text-slate-500">{customer.address}</p>}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{customer.phone ?? '—'}</td>
-                      <td className="px-4 py-3 text-slate-600">{customer.email ?? '—'}</td>
-                      <td className="px-4 py-3 text-slate-600">{customer.totalOrders}</td>
-                      <td className="px-4 py-3 text-slate-600">{customer.totalSpending}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3 text-slate-600">{customer.phone ?? '—'}</td>
+                      <td className="px-3 sm:px-4 py-3 text-slate-600">{customer.email ?? '—'}</td>
+                      <td className="px-3 sm:px-4 py-3 text-slate-600">{customer.totalOrders}</td>
+                      <td className="px-3 sm:px-4 py-3 text-slate-600">{customer.totalSpending}</td>
+                      <td className="px-3 sm:px-4 py-3">
                         <div className="flex justify-end gap-1">
                           {canManage && (
                             <>

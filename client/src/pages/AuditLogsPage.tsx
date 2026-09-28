@@ -189,24 +189,24 @@ export function AuditLogsPage() {
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="scroll-x">
               <table className="w-full min-w-[820px] text-left text-sm">
                 <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Time</th>
-                    <th className="px-4 py-3 font-semibold">Action</th>
-                    <th className="px-4 py-3 font-semibold">Entity</th>
-                    <th className="px-4 py-3 font-semibold">Result</th>
-                    <th className="px-4 py-3 font-semibold">Actor</th>
-                    <th className="px-4 py-3 font-semibold">IP</th>
-                    <th className="px-4 py-3 text-right font-semibold">Duration</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Time</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Action</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Entity</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Result</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Actor</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">IP</th>
+                    <th className="px-3 sm:px-4 py-3 text-right font-semibold">Duration</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {isFetching && !data ? (
                     Array.from({ length: 6 }).map((_, index) => (
                       <tr key={index}>
-                        <td className="px-4 py-3" colSpan={7}>
+                        <td className="px-3 sm:px-4 py-3" colSpan={7}>
                           <Skeleton className="h-5 w-full" />
                         </td>
                       </tr>
@@ -214,19 +214,19 @@ export function AuditLogsPage() {
                   ) : data && data.items.length > 0 ? (
                     data.items.map((entry) => (
                       <tr key={entry.id} className="transition hover:bg-slate-50">
-                        <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(entry.createdAt)}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3 text-xs text-slate-500">{formatDateTime(entry.createdAt)}</td>
+                        <td className="px-3 sm:px-4 py-3">
                           <ActionCell entry={entry} />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           <Badge variant="slate">{entry.entity}</Badge>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           <Badge variant={statusTone(entry.status)}>
                             {entry.status === null ? '—' : entry.status}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           {entry.userName ? (
                             <div>
                               <p className="font-medium text-slate-800">{entry.userName}</p>
@@ -236,8 +236,8 @@ export function AuditLogsPage() {
                             <span className="text-xs italic text-slate-400">unauthenticated</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs text-slate-500">{entry.ip ?? '—'}</td>
-                        <td className="px-4 py-3 text-right text-xs text-slate-500">
+                        <td className="px-3 sm:px-4 py-3 font-mono text-xs text-slate-500">{entry.ip ?? '—'}</td>
+                        <td className="px-3 sm:px-4 py-3 text-right text-xs text-slate-500">
                           {entry.durationMs === null ? '—' : `${entry.durationMs} ms`}
                         </td>
                       </tr>

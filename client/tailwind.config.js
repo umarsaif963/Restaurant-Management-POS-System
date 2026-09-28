@@ -1,6 +1,28 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  plugins: [
+    // Edge shadows that appear only while a horizontally scrollable region
+    // actually has content off-screen, so wide tables signal they can be
+    // swiped on narrow viewports. Pure CSS, driven by `background-attachment:
+    // local` vs `scroll` - no JS scroll listeners.
+    function ({ addUtilities }) {
+      addUtilities({
+        '.scroll-x': {
+          overflowX: 'auto',
+          backgroundImage:
+            'linear-gradient(to right, #fff 30%, rgba(255,255,255,0)),' +
+            'linear-gradient(to right, rgba(255,255,255,0), #fff 70%),' +
+            'linear-gradient(to right, rgba(15,23,42,0.08), rgba(15,23,42,0)),' +
+            'linear-gradient(to left, rgba(15,23,42,0.08), rgba(15,23,42,0))',
+          backgroundPosition: 'left center, right center, left center, right center',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: '36px 100%, 36px 100%, 12px 100%, 12px 100%',
+          backgroundAttachment: 'local, local, scroll, scroll',
+        },
+      });
+    },
+  ],
   theme: {
     extend: {
       fontFamily: {
@@ -68,5 +90,4 @@ export default {
       },
     },
   },
-  plugins: [],
 };

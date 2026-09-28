@@ -32,7 +32,7 @@ export function ConfirmDialog({
         onClick={onCancel}
         aria-hidden="true"
       />
-      <div className="relative w-full max-w-md animate-scale-in rounded-2xl bg-white p-6 shadow-pop">
+      <div className="relative max-h-[85vh] w-full max-w-md animate-scale-in overflow-y-auto rounded-2xl bg-white p-4 shadow-pop sm:p-6">
         <h3 className="text-sm font-semibold tracking-tight text-slate-900">{title}</h3>
         <p className="mt-2 text-sm leading-relaxed text-slate-500">{message}</p>
         <div className="mt-5 flex justify-end gap-2">

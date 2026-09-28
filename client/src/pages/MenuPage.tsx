@@ -209,25 +209,25 @@ export function MenuPage() {
           </Card>
 
           <Card>
-            <div className="overflow-x-auto">
+            <div className="scroll-x">
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Item</th>
-                    <th className="px-4 py-3 font-semibold">Price</th>
-                    <th className="px-4 py-3 font-semibold">Tax</th>
-                    <th className="px-4 py-3 font-semibold">Prep</th>
-                    <th className="px-4 py-3 font-semibold">Variations</th>
-                    <th className="px-4 py-3 font-semibold">Add-ons</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Item</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Price</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Tax</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Prep</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Variations</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Add-ons</th>
+                    <th className="px-3 sm:px-4 py-3 font-semibold">Status</th>
+                    <th className="px-3 sm:px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {isFetching && !items ? (
                     Array.from({ length: 6 }).map((_, index) => (
                       <tr key={index}>
-                        <td className="px-4 py-3" colSpan={8}>
+                        <td className="px-3 sm:px-4 py-3" colSpan={8}>
                           <Skeleton className="h-5 w-full" />
                         </td>
                       </tr>
@@ -235,19 +235,19 @@ export function MenuPage() {
                   ) : items && items.items.length > 0 ? (
                     items.items.map((item) => (
                       <tr key={item.id} className="transition hover:bg-slate-50">
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           <p className="font-medium text-slate-800">{item.name}</p>
                           <p className="text-xs text-slate-500">
                             {item.categoryName}
                             {item.sku && <span className="ml-2 font-mono">{item.sku}</span>}
                           </p>
                         </td>
-                        <td className="px-4 py-3 font-medium text-slate-800">{item.price}</td>
-                        <td className="px-4 py-3 text-slate-600">{item.taxRate}%</td>
-                        <td className="px-4 py-3 text-slate-600">{item.preparationTime ? `${item.preparationTime} min` : '—'}</td>
-                        <td className="px-4 py-3 text-slate-600">{item.variations.length}</td>
-                        <td className="px-4 py-3 text-slate-600">{item.addOns.length}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3 font-medium text-slate-800">{item.price}</td>
+                        <td className="px-3 sm:px-4 py-3 text-slate-600">{item.taxRate}%</td>
+                        <td className="px-3 sm:px-4 py-3 text-slate-600">{item.preparationTime ? `${item.preparationTime} min` : '—'}</td>
+                        <td className="px-3 sm:px-4 py-3 text-slate-600">{item.variations.length}</td>
+                        <td className="px-3 sm:px-4 py-3 text-slate-600">{item.addOns.length}</td>
+                        <td className="px-3 sm:px-4 py-3">
                           <div className="flex items-center gap-2">
                             <Badge variant={MENU_ITEM_STATUS_BADGE[item.status]}>
                               {MENU_ITEM_STATUS_LABELS[item.status]}
@@ -259,7 +259,7 @@ export function MenuPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           {canManage && (
                             <div className="flex justify-end gap-1">
                               <button

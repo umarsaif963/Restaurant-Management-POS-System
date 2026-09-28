@@ -101,26 +101,26 @@ export function PurchaseDetailModal({ open, purchase, manager, onClose }: Purcha
 
         {current.notes && <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">{current.notes}</p>}
 
-        <div className="overflow-x-auto">
+        <div className="scroll-x">
           <table className="w-full min-w-[480px] text-left text-sm">
             <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
               <tr>
-                <th className="px-4 py-2 font-semibold">Item</th>
-                <th className="px-4 py-2 font-semibold">Quantity</th>
-                <th className="px-4 py-2 font-semibold">Unit cost</th>
-                <th className="px-4 py-2 text-right font-semibold">Amount</th>
+                <th className="px-3 sm:px-4 py-2 font-semibold">Item</th>
+                <th className="px-3 sm:px-4 py-2 font-semibold">Quantity</th>
+                <th className="px-3 sm:px-4 py-2 font-semibold">Unit cost</th>
+                <th className="px-3 sm:px-4 py-2 text-right font-semibold">Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {current.items.map((item) => (
                 <tr key={item.id}>
-                  <td className="px-4 py-2 font-medium text-slate-800">
+                  <td className="px-3 sm:px-4 py-2 font-medium text-slate-800">
                     {item.itemName}
                     <span className="ml-1 text-xs font-normal text-slate-400">({STOCK_UNIT_LABELS[item.unit]})</span>
                   </td>
-                  <td className="px-4 py-2 text-slate-600">{item.quantity}</td>
-                  <td className="px-4 py-2 text-slate-600">${item.unitCost}</td>
-                  <td className="px-4 py-2 text-right font-medium text-slate-800">${item.amount}</td>
+                  <td className="px-3 sm:px-4 py-2 text-slate-600">{item.quantity}</td>
+                  <td className="px-3 sm:px-4 py-2 text-slate-600">${item.unitCost}</td>
+                  <td className="px-3 sm:px-4 py-2 text-right font-medium text-slate-800">${item.amount}</td>
                 </tr>
               ))}
             </tbody>

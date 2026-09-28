@@ -58,17 +58,17 @@ export function ReorderSuggestionsCard({ canManage, onRestock, onRetry }: Reorde
           description="No items are currently below their minimum — check back after a few days of sales."
         />
       ) : (
-        <div className="overflow-x-auto">
+        <div className="scroll-x">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
               <tr>
-                <th className="px-4 py-3 font-semibold">Item</th>
-                <th className="px-4 py-3 font-semibold">On hand</th>
-                <th className="px-4 py-3 font-semibold">Health</th>
-                <th className="px-4 py-3 font-semibold">Used / day</th>
-                <th className="px-4 py-3 font-semibold">Days left</th>
-                <th className="px-4 py-3 font-semibold">Suggested to order</th>
-                <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                <th className="px-3 sm:px-4 py-3 font-semibold">Item</th>
+                <th className="px-3 sm:px-4 py-3 font-semibold">On hand</th>
+                <th className="px-3 sm:px-4 py-3 font-semibold">Health</th>
+                <th className="px-3 sm:px-4 py-3 font-semibold">Used / day</th>
+                <th className="px-3 sm:px-4 py-3 font-semibold">Days left</th>
+                <th className="px-3 sm:px-4 py-3 font-semibold">Suggested to order</th>
+                <th className="px-3 sm:px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -76,27 +76,27 @@ export function ReorderSuggestionsCard({ canManage, onRestock, onRetry }: Reorde
                 const item = suggestion.item;
                 return (
                   <tr key={item.id} className="transition hover:bg-slate-50/70">
-                    <td className="px-4 py-3">
+                    <td className="px-3 sm:px-4 py-3">
                       <p className="font-medium text-slate-800">{item.name}</p>
                       {item.category && <p className="text-xs text-slate-500">{item.category}</p>}
                     </td>
-                    <td className="px-4 py-3 font-semibold text-slate-700">
+                    <td className="px-3 sm:px-4 py-3 font-semibold text-slate-700">
                       {item.quantity}
                       <span className="ml-1 text-xs font-normal text-slate-400">{STOCK_UNIT_LABELS[item.unit]}</span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 sm:px-4 py-3">
                       <Badge variant={STOCK_HEALTH_BADGE[item.health]}>{STOCK_HEALTH_LABELS[item.health]}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{suggestion.consumptionPerDay}</td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-3 sm:px-4 py-3 text-slate-600">{suggestion.consumptionPerDay}</td>
+                    <td className="px-3 sm:px-4 py-3 text-slate-600">
                       {suggestion.daysOfStock === '0' ? (
                         <span className="font-medium text-red-600">out of stock</span>
                       ) : (
                         suggestion.daysOfStock ?? '—'
                       )}
                     </td>
-                    <td className="px-4 py-3 font-semibold text-slate-800">{suggestion.suggestedQuantity ?? '—'}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 sm:px-4 py-3 font-semibold text-slate-800">{suggestion.suggestedQuantity ?? '—'}</td>
+                    <td className="px-3 sm:px-4 py-3">
                       <div className="flex justify-end">
                         {canManage && (
                           <button

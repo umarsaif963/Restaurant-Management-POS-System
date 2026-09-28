@@ -38,7 +38,7 @@ function ToastItem({ id, type, title, message }: { id: string; type: ToastType; 
   return (
     <div
       role="status"
-      className={`pointer-events-auto flex w-80 animate-slide-in-right items-start gap-3 rounded-xl border border-slate-100 border-l-4 p-3.5 shadow-pop ${STYLES[type].container} ${STYLES[type].accent}`}
+      className={`pointer-events-auto flex w-full animate-slide-in-right items-start gap-3 rounded-xl border border-slate-100 border-l-4 p-3.5 shadow-pop sm:w-80 ${STYLES[type].container} ${STYLES[type].accent}`}
     >
       <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${STYLES[type].iconClass}`} />
       <div className="min-w-0 flex-1">
@@ -61,7 +61,7 @@ export function Toaster() {
   const toasts = useAppSelector((state) => state.toasts.toasts);
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+      <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2 sm:inset-x-auto sm:right-4">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} {...toast} />
       ))}
