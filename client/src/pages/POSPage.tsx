@@ -7,6 +7,7 @@ import {
   ShoppingCart,
   Trash2,
   User as UserIcon,
+  X,
 } from 'lucide-react';
 import type {
   CreateOrderInput,
@@ -75,6 +76,7 @@ export function POSPage() {
   const [notes, setNotes] = useState('');
   const [cart, setCart] = useState<CartLine[]>([]);
   const [picking, setPicking] = useState<MenuItemProfile | null>(null);
+  const [cartOpen, setCartOpen] = useState(false);
 
   const debouncedSearch = useDebounce(search, 250);
 
@@ -144,7 +146,10 @@ export function POSPage() {
       (line) =>
         line.menuItemId === item.id &&
         line.variationId === picked.variationId &&
-        line.addOns.map((addOn) => addOn.id).sort().join(',') === [...addOnIds].sort().join(',') &&
+        line.addOns
+          .map((addOn) => addOn.id)
+          .sort()
+          .join(',') === [...addOnIds].sort().join(',') &&
         (line.notes ?? '') === notesValue,
     );
     const others = existing ? cart.filter((line) => line.key !== existing.key) : cart;
@@ -174,7 +179,10 @@ export function POSPage() {
     const key = [
       item.id,
       picked.variationId ?? '',
-      addOns.map((addOn) => addOn.id).sort().join(','),
+      addOns
+        .map((addOn) => addOn.id)
+        .sort()
+        .join(','),
       notesValue,
     ].join('::');
 
@@ -226,7 +234,10 @@ export function POSPage() {
       return current
         .map((candidate) =>
           candidate.key === key
-            ? { ...candidate, quantity: Math.min(MAX_LINE_QUANTITY, Math.max(1, candidate.quantity + delta)) }
+            ? {
+                ...candidate,
+                quantity: Math.min(MAX_LINE_QUANTITY, Math.max(1, candidate.quantity + delta)),
+              }
             : candidate,
         )
         .filter((candidate) => candidate.quantity >= 1);
@@ -253,10 +264,18 @@ export function POSPage() {
       subtotal += unit * line.quantity;
       tax += percentOf(unit * line.quantity, line.taxRate);
     }
-    const serviceChargePct = orderType === 'DINE_IN' ? settings?.settings.serviceChargePct ?? '0' : '0';
+    const serviceChargePct =
+      orderType === 'DINE_IN' ? (settings?.settings.serviceChargePct ?? '0') : '0';
     const service = percentOf(subtotal, serviceChargePct);
     return { subtotal, tax, service, total: subtotal + tax + service };
   }, [cart, orderType, settings?.settings.serviceChargePct]);
+
+  /**
+   * Phones cannot show the menu and the running order side by side, so the
+   * order lives in a full-height sheet driven by the fixed summary bar below.
+   * From `lg` up that sheet is never used and the sidebar layout takes over.
+   */
+  const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
 
   const hasTable = orderType !== 'DINE_IN' || tableId !== null;
   const canPlace = cart.length > 0 && hasTable && !placing;
@@ -284,21 +303,29 @@ export function POSPage() {
     };
     try {
       const created = await createOrder(payload).unwrap();
-      toast.success('Order placed', `${created.orderNumber} is now ${created.status.toLowerCase()}.`);
+      toast.success(
+        'Order placed',
+        `${created.orderNumber} is now ${created.status.toLowerCase()}.`,
+      );
       setCart([]);
       setNotes('');
       setTableId(null);
       setCustomerId(null);
+      setCartOpen(false);
     } catch (error) {
-      toast.error('Could not place order', error instanceof Error ? error.message : 'Please try again.');
+      toast.error(
+        'Could not place order',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
     }
   }
 
-  const serviceChargePct = orderType === 'DINE_IN' ? settings?.settings.serviceChargePct ?? '0' : '0';
+  const serviceChargePct =
+    orderType === 'DINE_IN' ? (settings?.settings.serviceChargePct ?? '0') : '0';
 
   return (
-    <div className="flex items-start gap-4">
-      <div className="min-w-0 flex-1 space-y-4">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <div className="min-w-0 flex-1 space-y-4 pb-20 lg:pb-0">
         <Card>
           <div className="space-y-3">
             <div>
@@ -344,9 +371,13 @@ export function POSPage() {
                                 : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300 hover:text-brand-700',
                           ].join(' ')}
                           onClick={() => selectTable(table)}
-                          title={busy ? `${table.tableNumber} is in use` : `Table ${table.tableNumber}`}
+                          title={
+                            busy ? `${table.tableNumber} is in use` : `Table ${table.tableNumber}`
+                          }
                         >
-                          <span className="font-semibold">{String(table.tableNumber).padStart(2, '0')}</span>
+                          <span className="font-semibold">
+                            {String(table.tableNumber).padStart(2, '0')}
+                          </span>
                           {busy && <span className="text-[10px] opacity-70">In use</span>}
                         </button>
                       );
@@ -359,7 +390,9 @@ export function POSPage() {
             )}
 
             <div>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Customer</h2>
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Customer
+              </h2>
               {selectedCustomer ? (
                 <div className="flex items-center gap-2">
                   <Badge variant="slate">
@@ -402,7 +435,9 @@ export function POSPage() {
                             }}
                           >
                             <span>{customer.name}</span>
-                            {customer.phone && <span className="text-xs text-slate-400">{customer.phone}</span>}
+                            {customer.phone && (
+                              <span className="text-xs text-slate-400">{customer.phone}</span>
+                            )}
                           </button>
                         </li>
                       ))}
@@ -413,7 +448,9 @@ export function POSPage() {
             </div>
 
             <div>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Menu</h2>
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Menu
+              </h2>
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -475,12 +512,20 @@ export function POSPage() {
                         key={item.id}
                         type="button"
                         className="flex flex-col rounded-lg border border-slate-200 bg-white p-3 text-left text-sm transition hover:border-brand-300 hover:shadow-sm"
-                        onClick={() => (hasOptions ? setPicking(item) : addLine({ menuItemId: item.id, quantity: 1, addOnIds: [] }))}
+                        onClick={() =>
+                          hasOptions
+                            ? setPicking(item)
+                            : addLine({ menuItemId: item.id, quantity: 1, addOnIds: [] })
+                        }
                       >
                         <p className="font-medium text-slate-800">{item.name}</p>
                         <p className="mt-1 text-brand-700">
                           ${item.price}
-                          {hasOptions && <span className="ml-2 text-xs font-normal text-slate-400">Customize</span>}
+                          {hasOptions && (
+                            <span className="ml-2 text-xs font-normal text-slate-400">
+                              Customize
+                            </span>
+                          )}
                         </p>
                         {soldOut ? (
                           <p className="mt-1.5 text-xs font-medium text-red-600">Out of stock</p>
@@ -505,154 +550,221 @@ export function POSPage() {
         </Card>
       </div>
 
-      <Card className="sticky top-20 w-full max-w-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <ShoppingCart className="h-4 w-4 text-brand-600" />
-            Current order
-          </h2>
-          <Badge variant={ORDER_TYPE_BADGE[orderType]}>{ORDER_TYPE_LABELS[orderType]}</Badge>
-        </div>
-
-        {selectedTable && orderType === 'DINE_IN' && (
-          <p className="mb-2 text-xs text-slate-500">
-            Table <span className="font-semibold text-slate-700">{String(selectedTable.tableNumber).padStart(2, '0')}</span>
-            {selectedTable.name ? ` · ${selectedTable.name}` : ''}
-          </p>
-        )}
-
-        {cart.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-10 text-center">
-            <CookingPot className="h-8 w-8 text-slate-200" />
-            <p className="text-sm text-slate-400">Tap menu items to build the order.</p>
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {cart.map((line) => {
-              const unit =
-                Math.round(parseFloat(line.basePrice) * 100) +
-                Math.round(parseFloat(line.priceAdjustment) * 100) +
-                line.addOns.reduce((sum, addOn) => sum + Math.round(parseFloat(addOn.price) * 100), 0);
-              const lineTotal = unit * line.quantity;
-              // Judge the ceiling without this line's own claim on stock.
-              const lineAvailability = (() => {
-                const item = itemsById.get(line.menuItemId);
-                if (!item) return uncapped;
-                return evaluateCartAvailability(
-                  item,
-                  cart.filter((candidate) => candidate.key !== line.key),
-                  itemsById,
-                );
-              })();
-              const atStockLimit = lineAvailability.remaining === 0;
-              const atMax = line.quantity >= MAX_LINE_QUANTITY;
-              const increaseDisabled = atStockLimit || atMax;
-              const limitMessage = describeCartLimit(lineAvailability);
-              return (
-                <li key={line.key} className="rounded-lg border border-slate-100 p-2.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-slate-800">
-                      {line.quantity} × {line.name}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-800">${(lineTotal / 100).toFixed(2)}</p>
-                  </div>
-                  {line.variationName && <p className="mt-0.5 text-xs text-slate-500">{line.variationName}</p>}
-                  {line.addOns.length > 0 && (
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {line.addOns.map((addOn) => `${addOn.name} +$${addOn.price}`).join(', ')}
-                    </p>
-                  )}
-                  {line.notes && <p className="mt-0.5 text-xs italic text-slate-400">“{line.notes}”</p>}
-                  {limitMessage && (
-                    <p className="mt-1 text-xs font-medium text-amber-600">{limitMessage}</p>
-                  )}
-                  <div className="mt-2 flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="btn-secondary px-2 py-1"
-                      disabled={line.quantity <= 1}
-                      onClick={() => changeQuantity(line.key, -1)}
-                      aria-label="Decrease quantity"
-                    >
-                      <Minus className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-secondary px-2 py-1"
-                      disabled={increaseDisabled}
-                      onClick={() => changeQuantity(line.key, 1)}
-                      aria-label="Increase quantity"
-                      title={
-                        atStockLimit
-                          ? (limitMessage ?? 'No more stock available')
-                          : atMax
-                            ? `Maximum ${MAX_LINE_QUANTITY} per line`
-                            : undefined
-                      }
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      className="ml-auto rounded p-1 text-slate-300 transition hover:bg-red-50 hover:text-red-600"
-                      onClick={() => removeLine(line.key)}
-                      aria-label={`Remove ${line.name}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {cart.length > 0 && (
-          <>
-            <div className="mt-4">
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Notes</h2>
-              <input
-                type="text"
-                className="input"
-                placeholder="Order-level notes (optional)"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                maxLength={500}
-              />
-            </div>
-
-            <div className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-sm">
-              <div className="flex justify-between text-slate-500">
-                <span>Subtotal</span>
-                <span>${(totals.subtotal / 100).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-slate-500">
-                <span>Tax</span>
-                <span>${(totals.tax / 100).toFixed(2)}</span>
-              </div>
-              {Number(serviceChargePct) > 0 && orderType === 'DINE_IN' && (
-                <div className="flex justify-between text-slate-500">
-                  <span>Service charge ({serviceChargePct}%)</span>
-                  <span>${(totals.service / 100).toFixed(2)}</span>
-                </div>
+      {/*
+        Sticky sidebar from `lg` up. Below that the order is hidden until the
+        fixed summary bar is tapped, which reveals it as a full-height sheet -
+        a phone cannot fit the catalog and the order side by side.
+      */}
+      <div
+        className={[
+          'lg:sticky lg:top-20 lg:w-full lg:max-w-sm lg:shrink-0',
+          cartOpen ? 'fixed inset-0 z-40 overflow-y-auto bg-slate-50' : 'hidden lg:block',
+        ].join(' ')}
+        role={cartOpen ? 'dialog' : undefined}
+        aria-modal={cartOpen ? true : undefined}
+        aria-label="Current order"
+      >
+        <Card className={cartOpen ? 'rounded-none border-0 shadow-none' : ''}>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <ShoppingCart className="h-4 w-4 text-brand-600" />
+              Current order
+            </h2>
+            <div className="flex items-center gap-2">
+              <Badge variant={ORDER_TYPE_BADGE[orderType]}>{ORDER_TYPE_LABELS[orderType]}</Badge>
+              {cartOpen && (
+                <button
+                  type="button"
+                  onClick={() => setCartOpen(false)}
+                  className="-mr-1.5 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 lg:hidden"
+                  aria-label="Close current order"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               )}
-              <div className="flex justify-between pt-2 text-base font-semibold text-slate-800">
-                <span>Total</span>
-                <span>${(totals.total / 100).toFixed(2)}</span>
-              </div>
             </div>
+          </div>
 
-            <button
-              type="button"
-              className="btn-primary mt-4 w-full"
-              disabled={!canPlace}
-              onClick={placeOrder}
-            >
-              {placing ? 'Placing order…' : 'Place order'}
-            </button>
-          </>
-        )}
-      </Card>
+          {selectedTable && orderType === 'DINE_IN' && (
+            <p className="mb-2 text-xs text-slate-500">
+              Table{' '}
+              <span className="font-semibold text-slate-700">
+                {String(selectedTable.tableNumber).padStart(2, '0')}
+              </span>
+              {selectedTable.name ? ` · ${selectedTable.name}` : ''}
+            </p>
+          )}
+
+          {cart.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <CookingPot className="h-8 w-8 text-slate-200" />
+              <p className="text-sm text-slate-400">Tap menu items to build the order.</p>
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {cart.map((line) => {
+                const unit =
+                  Math.round(parseFloat(line.basePrice) * 100) +
+                  Math.round(parseFloat(line.priceAdjustment) * 100) +
+                  line.addOns.reduce(
+                    (sum, addOn) => sum + Math.round(parseFloat(addOn.price) * 100),
+                    0,
+                  );
+                const lineTotal = unit * line.quantity;
+                // Judge the ceiling without this line's own claim on stock.
+                const lineAvailability = (() => {
+                  const item = itemsById.get(line.menuItemId);
+                  if (!item) return uncapped;
+                  return evaluateCartAvailability(
+                    item,
+                    cart.filter((candidate) => candidate.key !== line.key),
+                    itemsById,
+                  );
+                })();
+                const atStockLimit = lineAvailability.remaining === 0;
+                const atMax = line.quantity >= MAX_LINE_QUANTITY;
+                const increaseDisabled = atStockLimit || atMax;
+                const limitMessage = describeCartLimit(lineAvailability);
+                return (
+                  <li key={line.key} className="rounded-lg border border-slate-100 p-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium text-slate-800">
+                        {line.quantity} × {line.name}
+                      </p>
+                      <p className="text-sm font-semibold text-slate-800">
+                        ${(lineTotal / 100).toFixed(2)}
+                      </p>
+                    </div>
+                    {line.variationName && (
+                      <p className="mt-0.5 text-xs text-slate-500">{line.variationName}</p>
+                    )}
+                    {line.addOns.length > 0 && (
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {line.addOns.map((addOn) => `${addOn.name} +$${addOn.price}`).join(', ')}
+                      </p>
+                    )}
+                    {line.notes && (
+                      <p className="mt-0.5 text-xs italic text-slate-400">“{line.notes}”</p>
+                    )}
+                    {limitMessage && (
+                      <p className="mt-1 text-xs font-medium text-amber-600">{limitMessage}</p>
+                    )}
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="btn-secondary px-2 py-1"
+                        disabled={line.quantity <= 1}
+                        onClick={() => changeQuantity(line.key, -1)}
+                        aria-label="Decrease quantity"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary px-2 py-1"
+                        disabled={increaseDisabled}
+                        onClick={() => changeQuantity(line.key, 1)}
+                        aria-label="Increase quantity"
+                        title={
+                          atStockLimit
+                            ? (limitMessage ?? 'No more stock available')
+                            : atMax
+                              ? `Maximum ${MAX_LINE_QUANTITY} per line`
+                              : undefined
+                        }
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="ml-auto rounded p-1 text-slate-300 transition hover:bg-red-50 hover:text-red-600"
+                        onClick={() => removeLine(line.key)}
+                        aria-label={`Remove ${line.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {cart.length > 0 && (
+            <>
+              <div className="mt-4">
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Notes
+                </h2>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Order-level notes (optional)"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  maxLength={500}
+                />
+              </div>
+
+              <div className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-sm">
+                <div className="flex justify-between text-slate-500">
+                  <span>Subtotal</span>
+                  <span>${(totals.subtotal / 100).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-slate-500">
+                  <span>Tax</span>
+                  <span>${(totals.tax / 100).toFixed(2)}</span>
+                </div>
+                {Number(serviceChargePct) > 0 && orderType === 'DINE_IN' && (
+                  <div className="flex justify-between text-slate-500">
+                    <span>Service charge ({serviceChargePct}%)</span>
+                    <span>${(totals.service / 100).toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-2 text-base font-semibold text-slate-800">
+                  <span>Total</span>
+                  <span>${(totals.total / 100).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn-primary mt-4 w-full"
+                disabled={!canPlace}
+                onClick={placeOrder}
+              >
+                {placing ? 'Placing order…' : 'Place order'}
+              </button>
+            </>
+          )}
+        </Card>
+      </div>
+
+      {/*
+        Phones only: a fixed bar keeps the running total reachable while the
+        cashier is still browsing the menu. `env(safe-area-inset-bottom)` keeps
+        it clear of the iOS home indicator.
+      */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 pt-3 backdrop-blur lg:hidden"
+        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+      >
+        <button
+          type="button"
+          onClick={() => setCartOpen(true)}
+          className="flex w-full items-center justify-between gap-3 text-left"
+        >
+          <span className="flex flex-col">
+            <span className="text-sm font-medium text-slate-800">
+              {cartCount} {cartCount === 1 ? 'item' : 'items'}
+            </span>
+            <span className="text-xs text-slate-500">View current order</span>
+          </span>
+          <span className="text-base font-bold text-slate-900">
+            ${(totals.total / 100).toFixed(2)}
+          </span>
+        </button>
+      </div>
 
       <ItemPickModal
         item={picking}
