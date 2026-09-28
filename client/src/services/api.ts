@@ -3,11 +3,24 @@ import type { ApiResponse } from '@restaurant/shared';
 import { env } from '@/config/env';
 
 /**
+ * The API namespace is mounted at `/api` on the server, while every endpoint in
+ * `store/api/*` is declared as `/v1/...`. Axios joins `baseURL` and the
+ * endpoint path, so the `/api` segment has to be present exactly once in the
+ * base URL. Normalising here keeps that decision in a single place and makes it
+ * idempotent, so `VITE_API_BASE_URL` may be given either as the bare origin or
+ * with the `/api` suffix already applied.
+ */
+function resolveApiBaseUrl(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+
+/**
  * Shared Axios instance used by the RTK Query base query and any direct calls.
  * `withCredentials` sends the HTTP-only auth cookies (module 3).
  */
 export const apiClient = axios.create({
-  baseURL: env.VITE_API_BASE_URL,
+  baseURL: resolveApiBaseUrl(env.VITE_API_BASE_URL),
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
