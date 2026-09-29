@@ -80,7 +80,7 @@ export async function listItems(params: ListInventoryItemsQuery): Promise<Pagina
     where.isActive = params.status === 'ACTIVE';
   }
 
-  const [total, rows] = await prisma.$transaction([
+  const [total, rows] = await Promise.all([
     prisma.inventoryItem.count({ where }),
     prisma.inventoryItem.findMany({
       where,
@@ -220,7 +220,7 @@ export async function listTransactions(
   if (params.itemId) where.inventoryItemId = params.itemId;
   if (params.type) where.type = params.type;
 
-  const [total, rows] = await prisma.$transaction([
+  const [total, rows] = await Promise.all([
     prisma.inventoryTransaction.count({ where }),
     prisma.inventoryTransaction.findMany({
       where,

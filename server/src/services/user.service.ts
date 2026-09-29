@@ -56,7 +56,7 @@ export async function listUsers(params: ListUsersParams): Promise<{
     ];
   }
 
-  const [total, rows] = await prisma.$transaction([
+  const [total, rows] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.findMany({
       where,

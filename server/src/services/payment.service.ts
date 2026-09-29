@@ -128,7 +128,7 @@ export async function recordPayment(
 }
 
 async function refreshPaymentStatus(orderId: string, grandTotalCents: number) {
-  const [collected, refunded] = await prisma.$transaction([
+  const [collected, refunded] = await Promise.all([
     prisma.payment.aggregate({
       where: { orderId, isRefund: false },
       _sum: { amount: true },

@@ -154,7 +154,7 @@ export async function listReservations(
     };
   }
 
-  const [total, rows] = await prisma.$transaction([
+  const [total, rows] = await Promise.all([
     prisma.reservation.count({ where }),
     prisma.reservation.findMany({
       where,

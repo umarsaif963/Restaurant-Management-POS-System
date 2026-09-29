@@ -188,7 +188,7 @@ export async function listItems(params: ListMenuItemsQuery): Promise<Paginated<M
     where.status = params.status;
   }
 
-  const [total, rows] = await prisma.$transaction([
+  const [total, rows] = await Promise.all([
     prisma.menuItem.count({ where }),
     prisma.menuItem.findMany({
       where,
@@ -196,6 +196,7 @@ export async function listItems(params: ListMenuItemsQuery): Promise<Paginated<M
       skip: (page - 1) * limit,
       take: limit,
       include: itemInclude(),
+      relationLoadStrategy: 'join',
     }),
   ]);
 

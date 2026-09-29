@@ -122,7 +122,7 @@ export async function listPurchases(
     where.status = params.status;
   }
 
-  const [total, rows] = await prisma.$transaction([
+  const [total, rows] = await Promise.all([
     prisma.purchase.count({ where }),
     prisma.purchase.findMany({
       where,

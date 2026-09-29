@@ -98,7 +98,7 @@ export async function listKitchenOrders(
   if (params.status) where.status = params.status;
   if (params.orderId) where.orderId = params.orderId;
 
-  const [total, rows] = await prisma.$transaction([
+  const [total, rows] = await Promise.all([
     prisma.kitchenOrder.count({ where }),
     prisma.kitchenOrder.findMany({
       where,

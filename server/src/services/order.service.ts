@@ -378,7 +378,7 @@ export async function listOrders(params: ListOrdersQuery): Promise<Paginated<Ord
     ];
   }
 
-  const [total, rows] = await prisma.$transaction([
+  const [total, rows] = await Promise.all([
     prisma.order.count({ where }),
     prisma.order.findMany({
       where,

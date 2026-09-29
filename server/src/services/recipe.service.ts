@@ -78,7 +78,7 @@ export async function listRecipes(params: ListRecipesQuery): Promise<Paginated<R
     ];
   }
 
-  const [total, rows] = await prisma.$transaction([
+  const [total, rows] = await Promise.all([
     prisma.recipe.count({ where }),
     prisma.recipe.findMany({
       where,

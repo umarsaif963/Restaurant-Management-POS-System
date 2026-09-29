@@ -37,7 +37,7 @@ export async function listCustomers(params: ListCustomersQuery): Promise<Paginat
     ];
   }
 
-  const [total, rows] = await prisma.$transaction([
+  const [total, rows] = await Promise.all([
     prisma.customer.count({ where }),
     prisma.customer.findMany({
       where,

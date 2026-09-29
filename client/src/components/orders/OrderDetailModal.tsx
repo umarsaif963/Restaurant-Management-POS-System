@@ -30,15 +30,22 @@ import {
   PAYMENT_STATUS_LABELS,
 } from '@/constants/order';
 
-const STATUS_NEXT: Record<OrderStatus, OrderStatus[]> = {
-  PENDING: ['CONFIRMED', 'COMPLETED', 'CANCELLED'],
-  CONFIRMED: ['PREPARING', 'COMPLETED', 'CANCELLED'],
-  PREPARING: ['READY'],
-  READY: ['SERVED'],
-  SERVED: ['COMPLETED'],
-  COMPLETED: [],
-  CANCELLED: [],
+/**
+ * Front-of-house gets a single "advance" action instead of the full transition
+ * graph: staff confirm the order, then the same button completes it and reuses
+ * the full completion path (completedAt, table release, stock, realtime).
+ * The kitchen milestones stay reachable for orders that already carry them.
+ */
+const ADVANCE: Partial<Record<OrderStatus, { to: OrderStatus; label: string }>> = {
+  PENDING: { to: 'CONFIRMED', label: 'Confirm order' },
+  CONFIRMED: { to: 'COMPLETED', label: 'Order completed' },
+  PREPARING: { to: 'READY', label: 'Order ready' },
+  READY: { to: 'SERVED', label: 'Order served' },
+  SERVED: { to: 'COMPLETED', label: 'Order completed' },
 };
+
+/** Mirrors the statuses the API allows CANCELLED from. */
+const CANCELLABLE: OrderStatus[] = ['PENDING', 'CONFIRMED'];
 
 const FRONT_OF_HOUSE = ['ADMIN', 'MANAGER', 'CASHIER', 'WAITER'];
 
@@ -99,6 +106,9 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
 
   const canEditItems =
     canOperate && order ? (ORDER_STATUSES_ALLOW_ITEM_EDITS as readonly string[]).includes(order.status) : false;
+
+  const advance = order ? ADVANCE[order.status] : undefined;
+  const canCancelOrder = order ? CANCELLABLE.includes(order.status) : false;
 
   async function handleAddLine(picked: PickedLine) {
     if (!order) return;
@@ -624,20 +634,29 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
 
           {canOperate && !cancelArmed && (
             <section className="border-t border-slate-100 pt-3">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Advance order</h3>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Order status</h3>
               <div className="flex flex-wrap gap-2">
-                {STATUS_NEXT[order.status].map((next) => (
+                {advance && (
                   <button
-                    key={next}
                     type="button"
                     disabled={updatingStatus}
-                    className={next === 'CANCELLED' ? 'btn-danger' : 'btn-primary'}
-                    onClick={() => handleStatus(next)}
+                    className="btn-primary"
+                    onClick={() => handleStatus(advance.to)}
                   >
-                    Mark {ORDER_STATUS_LABELS[next]}
+                    {advance.label}
                   </button>
-                ))}
-                {STATUS_NEXT[order.status].length === 0 && (
+                )}
+                {canCancelOrder && (
+                  <button
+                    type="button"
+                    disabled={updatingStatus}
+                    className="btn-danger"
+                    onClick={() => handleStatus('CANCELLED')}
+                  >
+                    Cancel order
+                  </button>
+                )}
+                {!advance && !canCancelOrder && (
                   <p className="flex items-center gap-2 text-xs text-slate-400">
                     <ClipboardList className="h-4 w-4" />
                     This order is closed.
