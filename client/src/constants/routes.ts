@@ -12,6 +12,7 @@ import {
   ReceiptText,
   Settings,
   ScrollText,
+  ShieldCheck,
   ShoppingCart,
   Truck,
   UserRound,
@@ -19,30 +20,40 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from 'lucide-react';
-import type { UserRole } from '@restaurant/shared';
+import type { Permission } from '@restaurant/shared';
 
 export const APP_NAME = 'Restaurant POS';
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '2.0.0';
+export const PLATFORM_NAME = 'Restaurant Platform Console';
+
+/** Everything of the point-of-sale workspace lives under this prefix. */
+export const APP_BASE_PATH = '/app';
+/** The platform console lives under its own prefix. */
+export const PLATFORM_BASE_PATH = '/platform';
 
 export interface NavItem {
   label: string;
   to: string;
   icon: LucideIcon;
   end?: boolean;
-  /** Limit the item to these roles. Omit to show to every signed-in user. */
-  roles?: UserRole[];
+  /** Permissions required to see the entry. Empty/omitted means every signed-in
+   *  account may see it. */
+  permissions?: Permission[];
 }
 
 export interface NavSection {
   title: string;
   items: NavItem[];
-  /** Limit the whole section to these roles. Omit to show to everyone. */
-  roles?: UserRole[];
+  /** Permissions required to see the whole section. */
+  permissions?: Permission[];
 }
 
 /**
  * Single source of truth for sidebar navigation.
- * Each module adds its own sections here as it is implemented.
+ *
+ * Visibility is driven by the permissions the server resolved for the signed-in
+ * account, not by the job role: a custom role with the same capabilities shows
+ * exactly the same entries as the built-in role would.
  */
 export const NAV_SECTIONS: NavSection[] = [
   {
@@ -50,13 +61,13 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       {
         label: 'System Status',
-        to: '/',
+        to: APP_BASE_PATH,
         icon: Activity,
         end: true,
       },
       {
         label: 'My Profile',
-        to: '/profile',
+        to: `${APP_BASE_PATH}/profile`,
         icon: UserRound,
       },
     ],
@@ -66,107 +77,121 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       {
         label: 'Point of Sale',
-        to: '/pos',
+        to: `${APP_BASE_PATH}/pos`,
         icon: ShoppingCart,
-        roles: ['ADMIN', 'MANAGER', 'CASHIER', 'WAITER'],
+        permissions: ['POS_USE'],
       },
       {
         label: 'Orders',
-        to: '/orders',
+        to: `${APP_BASE_PATH}/orders`,
         icon: ReceiptText,
+        permissions: ['ORDERS_READ'],
       },
       {
         label: 'Kitchen',
-        to: '/kitchen',
+        to: `${APP_BASE_PATH}/kitchen`,
         icon: ChefHat,
-        roles: ['ADMIN', 'MANAGER', 'KITCHEN_STAFF'],
+        permissions: ['KITCHEN_READ'],
       },
       {
         label: 'Kitchen Display',
-        to: '/kds',
+        to: `${APP_BASE_PATH}/kds`,
         icon: MonitorPlay,
-        roles: ['ADMIN', 'MANAGER', 'KITCHEN_STAFF'],
+        permissions: ['KDS_VIEW'],
       },
       {
         label: 'Menu',
-        to: '/menu',
+        to: `${APP_BASE_PATH}/menu`,
         icon: UtensilsCrossed,
+        permissions: ['MENU_READ'],
       },
       {
         label: 'Inventory',
-        to: '/inventory',
+        to: `${APP_BASE_PATH}/inventory`,
         icon: Boxes,
+        permissions: ['INVENTORY_READ'],
       },
       {
         label: 'Recipes',
-        to: '/recipes',
+        to: `${APP_BASE_PATH}/recipes`,
         icon: BookOpenText,
+        permissions: ['RECIPES_READ'],
       },
       {
         label: 'Suppliers',
-        to: '/suppliers',
+        to: `${APP_BASE_PATH}/suppliers`,
         icon: Truck,
+        permissions: ['SUPPLIERS_READ'],
       },
       {
         label: 'Purchases',
-        to: '/purchases',
+        to: `${APP_BASE_PATH}/purchases`,
         icon: ClipboardList,
+        permissions: ['PURCHASES_READ'],
       },
       {
         label: 'Reservations',
-        to: '/reservations',
+        to: `${APP_BASE_PATH}/reservations`,
         icon: CalendarDays,
+        permissions: ['RESERVATIONS_READ'],
       },
       {
         label: 'Tables',
-        to: '/tables',
+        to: `${APP_BASE_PATH}/tables`,
         icon: LayoutGrid,
+        permissions: ['TABLES_READ'],
       },
       {
         label: 'Customers',
-        to: '/customers',
+        to: `${APP_BASE_PATH}/customers`,
         icon: Users,
-        roles: ['ADMIN', 'MANAGER', 'CASHIER', 'WAITER'],
+        permissions: ['CUSTOMERS_READ'],
       },
     ],
   },
   {
     title: 'Insights',
-    roles: ['ADMIN', 'MANAGER'],
     items: [
       {
         label: 'Dashboard',
-        to: '/dashboard',
+        to: `${APP_BASE_PATH}/dashboard`,
         icon: LayoutDashboard,
+        permissions: ['DASHBOARD_VIEW'],
       },
       {
         label: 'Reports',
-        to: '/reports',
+        to: `${APP_BASE_PATH}/reports`,
         icon: BarChart3,
+        permissions: ['REPORTS_VIEW'],
       },
     ],
   },
   {
     title: 'Administration',
-    roles: ['ADMIN', 'MANAGER'],
     items: [
       {
-        label: 'Users',
-        to: '/users',
+        label: 'Employees',
+        to: `${APP_BASE_PATH}/employees`,
         icon: Users,
-        roles: ['ADMIN', 'MANAGER'],
+        permissions: ['EMPLOYEES_READ'],
+      },
+      {
+        label: 'Roles',
+        to: `${APP_BASE_PATH}/roles`,
+        icon: ShieldCheck,
+        permissions: ['ROLES_READ'],
       },
       {
         label: 'Settings',
-        to: '/settings',
+        to: `${APP_BASE_PATH}/settings`,
         icon: Settings,
-        roles: ['ADMIN', 'MANAGER'],
+        permissions: ['SETTINGS_READ'],
       },
       {
         label: 'Audit Logs',
-        to: '/audit-logs',
+        to: `${APP_BASE_PATH}/audit-logs`,
         icon: ScrollText,
-        roles: ['ADMIN', 'MANAGER'],
+        permissions: ['AUDIT_LOGS_VIEW'],
       },
     ],
   },

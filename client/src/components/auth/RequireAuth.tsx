@@ -6,6 +6,9 @@ import { Spinner } from '@/components/ui/Spinner';
 /**
  * Guards the authenticated application shell: checks the session, shows a
  * splash while it resolves, and redirects to /login when unauthenticated.
+ *
+ * It also keeps the two workspaces apart: the platform operator is sent to the
+ * platform console, everyone else to their restaurant workspace.
  */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -21,6 +24,18 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  const isPlatformOperator = user.role === 'SUPER_ADMIN';
+  const wantsPlatform = location.pathname.startsWith('/platform');
+  const wantsApp = location.pathname.startsWith('/app');
+
+  if (isPlatformOperator && wantsApp) {
+    return <Navigate to="/platform" replace />;
+  }
+
+  if (!isPlatformOperator && wantsPlatform) {
+    return <Navigate to="/app" replace />;
   }
 
   return <>{children}</>;

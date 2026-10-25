@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Pencil, Plus, RotateCw, Search, Trash2, UserPlus, Users } from 'lucide-react';
-import type { AuthUser, ListUsersQuery, UserRole, UserStatus } from '@restaurant/shared';
-import { USER_ROLES, USER_STATUSES } from '@restaurant/shared';
+import {
+  KeyRound,
+  Pencil,
+  Plus,
+  RotateCw,
+  Search,
+  Trash2,
+  UserCheck,
+  UserPlus,
+  Users,
+} from 'lucide-react';
+import type { EmployeeProfile, ListEmployeesQuery, UserRole, UserStatus } from '@restaurant/shared';
+import { RESTAURANT_USER_ROLES, USER_STATUSES } from '@restaurant/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -9,8 +19,13 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
 import { Spinner } from '@/components/ui/Spinner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { UserFormModal } from '@/components/users/UserFormModal';
-import { useDeactivateUserMutation, useListUsersQuery } from '@/store/api/userApi';
+import { EmployeeFormModal } from '@/components/employees/EmployeeFormModal';
+import {
+  useDeactivateEmployeeMutation,
+  useListEmployeesQuery,
+  useReactivateEmployeeMutation,
+  useResetEmployeePasswordMutation,
+} from '@/store/api/employeeApi';
 import { useToast } from '@/hooks/useToast';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDateTime } from '@/utils/format';
@@ -18,15 +33,17 @@ import { ROLE_BADGE, ROLE_LABELS, STATUS_BADGE, STATUS_LABELS } from '@/constant
 
 const PAGE_SIZE = 20;
 
-export function UsersPage() {
+export function EmployeesPage() {
   const toast = useToast();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState<UserRole | ''>('');
   const [status, setStatus] = useState<UserStatus | ''>('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
-  const [deactivating, setDeactivating] = useState<AuthUser | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<EmployeeProfile | null>(null);
+  const [deactivating, setDeactivating] = useState<EmployeeProfile | null>(null);
+  const [reactivating, setReactivating] = useState<EmployeeProfile | null>(null);
+  const [resetting, setResetting] = useState<EmployeeProfile | null>(null);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -34,7 +51,7 @@ export function UsersPage() {
     setPage(1);
   }, [debouncedSearch, role, status]);
 
-  const query: ListUsersQuery = {
+  const query: ListEmployeesQuery = {
     page,
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
@@ -42,39 +59,66 @@ export function UsersPage() {
     status: status || undefined,
   };
 
-  const { data, isError, isFetching, refetch } = useListUsersQuery(query);
-  const [deactivateUser, { isLoading: deactivatingBusy }] = useDeactivateUserMutation();
+  const { data, isError, isFetching, refetch } = useListEmployeesQuery(query);
+  const [deactivateEmployee, { isLoading: deactivatingBusy }] = useDeactivateEmployeeMutation();
+  const [reactivateEmployee, { isLoading: reactivatingBusy }] = useReactivateEmployeeMutation();
+  const [resetPassword, { isLoading: resettingBusy }] = useResetEmployeePasswordMutation();
 
   async function handleDeactivate() {
     if (!deactivating) return;
     try {
-      await deactivateUser(deactivating.id).unwrap();
-      toast.success('User deactivated', `${deactivating.name} can no longer sign in.`);
+      await deactivateEmployee(deactivating.id).unwrap();
+      toast.success('Employee deactivated', `${deactivating.name} can no longer sign in.`);
       setDeactivating(null);
     } catch {
-      toast.error('Could not deactivate user', 'The operation failed. Please try again.');
+      toast.error('Could not deactivate employee', 'The operation failed. Please try again.');
+    }
+  }
+
+  async function handleReactivate() {
+    if (!reactivating) return;
+    try {
+      await reactivateEmployee(reactivating.id).unwrap();
+      toast.success('Employee reactivated', `${reactivating.name} can sign in again.`);
+      setReactivating(null);
+    } catch {
+      toast.error('Could not reactivate employee', 'The operation failed. Please try again.');
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!resetting) return;
+    try {
+      const result = await resetPassword(resetting.id).unwrap();
+      toast.success(
+        'Temporary password issued',
+        `Share it with ${resetting.name}: ${result.temporaryPassword}`,
+      );
+      setResetting(null);
+    } catch {
+      toast.error('Could not reset password', 'The operation failed. Please try again.');
     }
   }
 
   function openCreate() {
-    setEditingUser(null);
+    setEditingEmployee(null);
     setModalOpen(true);
   }
 
-  function openEdit(user: AuthUser) {
-    setEditingUser(user);
+  function openEdit(employee: EmployeeProfile) {
+    setEditingEmployee(employee);
     setModalOpen(true);
   }
 
   return (
     <div>
       <PageHeader
-        title="Users"
+        title="Employees"
         description="Staff accounts, roles and access control."
         actions={
           <button type="button" className="btn-primary" onClick={openCreate}>
             <Plus className="h-4 w-4" />
-            Add user
+            Add employee
           </button>
         }
       />
@@ -89,19 +133,29 @@ export function UsersPage() {
               placeholder="Search name, email or phone…"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              aria-label="Search users"
+              aria-label="Search employees"
             />
           </div>
           <div className="flex gap-2">
-            <select className="input w-auto" value={role} onChange={(event) => setRole(event.target.value as UserRole | '')} aria-label="Filter by role">
+            <select
+              className="input w-auto"
+              value={role}
+              onChange={(event) => setRole(event.target.value as UserRole | '')}
+              aria-label="Filter by role"
+            >
               <option value="">All roles</option>
-              {USER_ROLES.map((r) => (
+              {RESTAURANT_USER_ROLES.map((r) => (
                 <option key={r} value={r}>
                   {ROLE_LABELS[r]}
                 </option>
               ))}
             </select>
-            <select className="input w-auto" value={status} onChange={(event) => setStatus(event.target.value as UserStatus | '')} aria-label="Filter by status">
+            <select
+              className="input w-auto"
+              value={status}
+              onChange={(event) => setStatus(event.target.value as UserStatus | '')}
+              aria-label="Filter by status"
+            >
               <option value="">All statuses</option>
               {USER_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -114,7 +168,7 @@ export function UsersPage() {
 
         {isError ? (
           <div className="flex flex-col items-center gap-3 p-8 text-center">
-            <p className="text-sm text-slate-500">Could not load users.</p>
+            <p className="text-sm text-slate-500">Could not load employees.</p>
             <button type="button" className="btn-secondary" onClick={() => refetch()}>
               <RotateCw className="h-4 w-4" />
               Retry
@@ -125,7 +179,7 @@ export function UsersPage() {
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-3 sm:px-4 py-3 font-semibold">User</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold">Employee</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold">Role</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold">Status</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold">Phone</th>
@@ -143,43 +197,67 @@ export function UsersPage() {
                     </tr>
                   ))
                 ) : data && data.items.length > 0 ? (
-                  data.items.map((user) => (
-                    <tr key={user.id} className="transition hover:bg-slate-50">
+                  data.items.map((employee) => (
+                    <tr key={employee.id} className="transition hover:bg-slate-50">
                       <td className="px-3 sm:px-4 py-3">
-                        <p className="font-medium text-slate-800">{user.name}</p>
-                        <p className="text-xs text-slate-500">{user.email}</p>
+                        <p className="font-medium text-slate-800">{employee.name}</p>
+                        <p className="text-xs text-slate-500">{employee.email}</p>
                       </td>
                       <td className="px-3 sm:px-4 py-3">
-                        <Badge variant={ROLE_BADGE[user.role]}>{ROLE_LABELS[user.role]}</Badge>
+                        <Badge variant={ROLE_BADGE[employee.role]}>
+                          {employee.customRoleName ?? ROLE_LABELS[employee.role]}
+                        </Badge>
                       </td>
                       <td className="px-3 sm:px-4 py-3">
-                        <Badge variant={STATUS_BADGE[user.status]}>{STATUS_LABELS[user.status]}</Badge>
+                        <Badge variant={STATUS_BADGE[employee.status]}>
+                          {STATUS_LABELS[employee.status]}
+                        </Badge>
                       </td>
-                      <td className="px-3 sm:px-4 py-3 text-slate-600">{user.phone ?? '—'}</td>
+                      <td className="px-3 sm:px-4 py-3 text-slate-600">{employee.phone ?? '—'}</td>
                       <td className="px-3 sm:px-4 py-3 text-slate-600">
-                        {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}
+                        {employee.lastLoginAt ? formatDateTime(employee.lastLoginAt) : 'Never'}
                       </td>
                       <td className="px-3 sm:px-4 py-3">
                         <div className="flex justify-end gap-1">
                           <button
                             type="button"
-                            onClick={() => openEdit(user)}
+                            onClick={() => openEdit(employee)}
                             className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                            title="Edit user"
-                            aria-label={`Edit ${user.name}`}
+                            title="Edit employee"
+                            aria-label={`Edit ${employee.name}`}
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => setDeactivating(user)}
-                            className="rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                            title="Deactivate user"
-                            aria-label={`Deactivate ${user.name}`}
-                            disabled={user.status !== 'ACTIVE'}
+                            onClick={() => setResetting(employee)}
+                            className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                            title="Issue a temporary password"
+                            aria-label={`Reset password for ${employee.name}`}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <KeyRound className="h-4 w-4" />
                           </button>
+                          {employee.status === 'ACTIVE' ? (
+                            <button
+                              type="button"
+                              onClick={() => setDeactivating(employee)}
+                              className="rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                              title="Deactivate employee"
+                              aria-label={`Deactivate ${employee.name}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setReactivating(employee)}
+                              className="rounded-md p-1.5 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-600"
+                              title="Reactivate employee"
+                              aria-label={`Reactivate ${employee.name}`}
+                            >
+                              <UserCheck className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -189,7 +267,7 @@ export function UsersPage() {
                     <td colSpan={6}>
                       <EmptyState
                         icon={<Users className="h-6 w-6" />}
-                        title="No users found"
+                        title="No employees found"
                         description={
                           debouncedSearch
                             ? 'Try adjusting your search or filters.'
@@ -199,7 +277,7 @@ export function UsersPage() {
                           !debouncedSearch ? (
                             <button type="button" className="btn-secondary" onClick={openCreate}>
                               <UserPlus className="h-4 w-4" />
-                              Add user
+                              Add employee
                             </button>
                           ) : undefined
                         }
@@ -229,11 +307,15 @@ export function UsersPage() {
         )}
       </section>
 
-      <UserFormModal open={modalOpen} user={editingUser} onClose={() => setModalOpen(false)} />
+      <EmployeeFormModal
+        open={modalOpen}
+        employee={editingEmployee}
+        onClose={() => setModalOpen(false)}
+      />
 
       <ConfirmDialog
         open={deactivating !== null}
-        title="Deactivate user"
+        title="Deactivate employee"
         message={
           deactivating
             ? `Deactivate ${deactivating.name}? They will be signed out immediately and unable to log in again. This can be reversed by an administrator.`
@@ -243,6 +325,34 @@ export function UsersPage() {
         busy={deactivatingBusy}
         onCancel={() => setDeactivating(null)}
         onConfirm={handleDeactivate}
+      />
+
+      <ConfirmDialog
+        open={reactivating !== null}
+        title="Reactivate employee"
+        message={
+          reactivating
+            ? `Give ${reactivating.name} access to the workspace again?`
+            : ''
+        }
+        confirmLabel="Reactivate"
+        busy={reactivatingBusy}
+        onCancel={() => setReactivating(null)}
+        onConfirm={handleReactivate}
+      />
+
+      <ConfirmDialog
+        open={resetting !== null}
+        title="Issue a temporary password"
+        message={
+          resetting
+            ? `A new temporary password will be generated for ${resetting.name} and every active session of that account will be signed out.`
+            : ''
+        }
+        confirmLabel="Issue password"
+        busy={resettingBusy}
+        onCancel={() => setResetting(null)}
+        onConfirm={handleResetPassword}
       />
     </div>
   );

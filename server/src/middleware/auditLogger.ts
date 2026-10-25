@@ -28,6 +28,7 @@ export function auditLogger(): RequestHandler {
         .create({
           data: {
             userId: authenticated?.userId ?? null,
+            restaurantId: authenticated?.restaurantId ?? null,
             action: `${req.method} ${path}`,
             entity: 'HTTP',
             ip: req.ip ?? null,

@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import { UserRole } from '@prisma/client';
 import { authenticate } from '../middleware/authenticate.js';
-import { authorize } from '../middleware/authorize.js';
+import { requirePermission } from '../middleware/permissions.js';
 import { validate } from '../middleware/validate.js';
 import * as supplierController from '../controllers/supplier.controller.js';
 import {
@@ -15,37 +14,37 @@ const router = Router();
 
 router.use(authenticate());
 
-const managers = [UserRole.MANAGER, UserRole.ADMIN];
-
 router.get(
   '/',
+  requirePermission('SUPPLIERS_READ'),
   validate({ query: listSuppliersQuerySchema }),
   supplierController.listSuppliers,
 );
 
 router.get(
   '/:id',
+  requirePermission('SUPPLIERS_READ'),
   validate({ params: supplierParamsSchema }),
   supplierController.getSupplier,
 );
 
 router.post(
   '/',
-  authorize(...managers),
+  requirePermission('SUPPLIERS_WRITE'),
   validate({ body: createSupplierSchema }),
   supplierController.createSupplier,
 );
 
 router.patch(
   '/:id',
-  authorize(...managers),
+  requirePermission('SUPPLIERS_WRITE'),
   validate({ params: supplierParamsSchema, body: updateSupplierSchema }),
   supplierController.updateSupplier,
 );
 
 router.delete(
   '/:id',
-  authorize(...managers),
+  requirePermission('SUPPLIERS_WRITE'),
   validate({ params: supplierParamsSchema }),
   supplierController.deleteSupplier,
 );

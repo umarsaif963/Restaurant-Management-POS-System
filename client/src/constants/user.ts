@@ -1,8 +1,12 @@
-import { USER_ROLES, USER_STATUSES } from '@restaurant/shared';
+import { RESTAURANT_USER_ROLES, USER_ROLES, USER_STATUSES } from '@restaurant/shared';
 
 export const ROLE_OPTIONS = USER_ROLES;
 
+/** Roles a restaurant owner may hand out. */
+export const ASSIGNABLE_ROLE_OPTIONS = RESTAURANT_USER_ROLES;
+
 export const ROLE_LABELS: Record<(typeof USER_ROLES)[number], string> = {
+  SUPER_ADMIN: 'Platform administrator',
   ADMIN: 'Administrator',
   MANAGER: 'Manager',
   CASHIER: 'Cashier',
@@ -10,7 +14,11 @@ export const ROLE_LABELS: Record<(typeof USER_ROLES)[number], string> = {
   KITCHEN_STAFF: 'Kitchen staff',
 };
 
-export const ROLE_BADGE: Record<(typeof USER_ROLES)[number], 'red' | 'blue' | 'green' | 'amber' | 'slate'> = {
+export const ROLE_BADGE: Record<
+  (typeof USER_ROLES)[number],
+  'red' | 'blue' | 'green' | 'amber' | 'slate'
+> = {
+  SUPER_ADMIN: 'red',
   ADMIN: 'red',
   MANAGER: 'blue',
   CASHIER: 'green',

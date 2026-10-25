@@ -7,6 +7,7 @@ import type {
 } from '@restaurant/shared';
 import { Prisma } from '@prisma/client';
 import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
+import { requireTenantId } from '../config/tenant-context.js';
 import { ApiError } from '../utils/ApiError.js';
 import { fromCents, toCents } from '../utils/money.js';
 
@@ -127,11 +128,13 @@ export async function createRecipe(input: CreateRecipeInput): Promise<RecipeProf
 
   const recipe = await prisma.recipe.create({
     data: {
+      restaurantId: requireTenantId(),
       menuItemId: input.menuItemId,
       name: input.name,
       yield: input.yield ?? 1,
       ingredients: {
         create: input.ingredients.map((ingredient) => ({
+          restaurantId: requireTenantId(),
           inventoryItemId: ingredient.inventoryItemId,
           quantity: ingredient.quantity,
         })),
@@ -158,7 +161,13 @@ export async function updateRecipe(id: string, input: UpdateRecipeInput): Promis
         name: input.name,
         yield: input.yield,
         ingredients: input.ingredients
-          ? { create: input.ingredients.map((ingredient) => ({ inventoryItemId: ingredient.inventoryItemId, quantity: ingredient.quantity })) }
+          ? {
+              create: input.ingredients.map((ingredient) => ({
+                restaurantId: requireTenantId(),
+                inventoryItemId: ingredient.inventoryItemId,
+                quantity: ingredient.quantity,
+              })),
+            }
           : undefined,
       },
       include: recipeInclude(),

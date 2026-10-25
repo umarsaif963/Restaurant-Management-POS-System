@@ -1,14 +1,12 @@
 import type { Request, Response } from 'express';
 import type {
   ChangePasswordInput,
-  CreateUserInput,
   ForgotPasswordInput,
   LoginInput,
   ResetPasswordInput,
 } from '@restaurant/shared';
 import { COOKIE_NAMES } from '../config/auth.js';
 import * as authService from '../services/auth.service.js';
-import * as userService from '../services/user.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { clearAuthCookies, setAuthCookies } from '../utils/cookies.js';
 
@@ -18,19 +16,6 @@ function getClientMeta(req: Request): { ip?: string; userAgent?: string } {
     userAgent: req.get('user-agent')?.slice(0, 256),
   };
 }
-
-/**
- * Staff creation (manager- and admin-only). Shares the same rules as
- * `POST /users`.
- */
-export const register = asyncHandler(async (req: Request, res: Response) => {
-  const body = req.validatedBody as CreateUserInput;
-  const user = await userService.createUser({
-    ...body,
-    actorRole: req.authenticated!.role,
-  });
-  res.status(201).json({ success: true, data: { user } });
-});
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const body = req.validatedBody as LoginInput;

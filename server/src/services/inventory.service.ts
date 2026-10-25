@@ -14,6 +14,7 @@ import type {
 } from '@restaurant/shared';
 import { InventoryTransactionType, Prisma } from '@prisma/client';
 import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
+import { requireTenantId } from '../config/tenant-context.js';
 import { ApiError } from '../utils/ApiError.js';
 import { fromMillis, toMillis } from '../utils/units.js';
 
@@ -105,14 +106,18 @@ export async function getItem(id: string): Promise<InventoryItemProfile> {
 }
 
 export async function createItem(input: CreateInventoryItemInput): Promise<InventoryItemProfile> {
+  const restaurantId = requireTenantId();
   if (input.sku) {
-    const existing = await prisma.inventoryItem.findUnique({ where: { sku: input.sku } });
+    const existing = await prisma.inventoryItem.findUnique({
+      where: { restaurantId_sku: { restaurantId, sku: input.sku } },
+    });
     if (existing) {
       throw ApiError.badRequest('SKU is already in use');
     }
   }
   const created = await prisma.inventoryItem.create({
     data: {
+      restaurantId,
       name: input.name,
       sku: input.sku ?? null,
       unit: input.unit,
@@ -131,7 +136,11 @@ export async function createItem(input: CreateInventoryItemInput): Promise<Inven
 export async function updateItem(id: string, input: UpdateInventoryItemInput): Promise<InventoryItemProfile> {
   await requireItem(id);
   if (input.sku) {
-    const existing = await prisma.inventoryItem.findUnique({ where: { sku: input.sku } });
+    const existing = await prisma.inventoryItem.findUnique({
+      where: {
+        restaurantId_sku: { restaurantId: requireTenantId(), sku: input.sku },
+      },
+    });
     if (existing && existing.id !== id) {
       throw ApiError.badRequest('SKU is already in use');
     }
@@ -357,6 +366,7 @@ export async function recordTransaction(
   const created = await prisma.$transaction(async (tx) => {
     const row = await tx.inventoryTransaction.create({
       data: {
+        restaurantId: requireTenantId(),
         inventoryItemId: itemId,
         type: input.type,
         quantity: fromMillis(delta),

@@ -204,7 +204,7 @@ export function KdsPage() {
               <RefreshCw className="h-4 w-4" />
               Refresh
             </button>
-            <Link to="/kitchen" className="btn-secondary">
+            <Link to="/app/kitchen" className="btn-secondary">
               Ticket list
             </Link>
           </>

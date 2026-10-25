@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import healthRoutes from './health.routes.js';
+import publicRoutes from './public.routes.js';
 import authRoutes from './auth.routes.js';
-import userRoutes from './user.routes.js';
+import contactRoutes from './contact.routes.js';
+import employeeRoutes from './employee.routes.js';
+import roleRoutes from './role.routes.js';
+import platformRoutes from './platform.routes.js';
 import settingsRoutes from './settings.routes.js';
 import tableRoutes from './table.routes.js';
 import customerRoutes from './customer.routes.js';
@@ -20,9 +24,15 @@ import auditRoutes from './audit.routes.js';
 
 const router = Router();
 
+// Endpoints reachable without an account.
 router.use('/health', healthRoutes);
+router.use('/public', publicRoutes);
+
 router.use('/auth', authRoutes);
-router.use('/users', userRoutes);
+router.use('/contact-messages', contactRoutes);
+router.use('/employees', employeeRoutes);
+router.use('/roles', roleRoutes);
+router.use('/platform', platformRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/tables', tableRoutes);
 router.use('/customers', customerRoutes);

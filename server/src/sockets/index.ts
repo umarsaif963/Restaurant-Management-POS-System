@@ -3,12 +3,13 @@ import { COOKIE_NAMES } from '../config/auth.js';
 import { prisma } from '../config/prisma.js';
 import { logger } from '../utils/logger.js';
 import { verifyAccessToken } from '../utils/jwt.js';
-import { bridgeToSocket } from './realtime.js';
+import { bridgeToSocket, restaurantRoom } from './realtime.js';
 
 export interface SocketAuth {
   userId: string;
   role: string;
   sessionId: string;
+  restaurantId: string | null;
 }
 
 function parseCookies(header: string | undefined): Record<string, string> {
@@ -59,7 +60,7 @@ export function initSocket(io: Server): Server {
         },
         select: {
           id: true,
-          user: { select: { id: true, role: true } },
+          user: { select: { id: true, role: true, restaurantId: true } },
         },
       });
 
@@ -71,6 +72,7 @@ export function initSocket(io: Server): Server {
         userId: session.user.id,
         role: session.user.role,
         sessionId: session.id,
+        restaurantId: session.user.restaurantId,
       } satisfies SocketAuth;
       next();
     } catch (error) {
@@ -81,7 +83,14 @@ export function initSocket(io: Server): Server {
   });
 
   io.on('connection', (socket) => {
-    logger.info(`Socket connected: ${socket.id} (user ${socket.data.auth?.userId ?? 'n/a'})`);
+    const auth = socket.data.auth as SocketAuth | undefined;
+    logger.info(`Socket connected: ${socket.id} (user ${auth?.userId ?? 'n/a'})`);
+
+    // Every client only listens to its own restaurant's room, so events of one
+    // venue never reach the screens of another venue.
+    if (auth?.restaurantId) {
+      void socket.join(restaurantRoom(auth.restaurantId));
+    }
 
     socket.emit('server:info', {
       service: 'restaurant-management-server',

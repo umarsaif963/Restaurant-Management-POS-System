@@ -1,9 +1,7 @@
 import { CheckCircle2, RefreshCw, ShoppingCart } from 'lucide-react';
 import type { InventoryItemProfile, ReorderSuggestionItem } from '@restaurant/shared';
-import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { STOCK_HEALTH_BADGE, STOCK_HEALTH_LABELS, STOCK_UNIT_LABELS } from '@/constants/inventory';
 import { useGetReorderSuggestionsQuery } from '@/store/api/inventoryApi';
 
@@ -21,26 +19,21 @@ export function ReorderSuggestionsCard({ canManage, onRestock, onRetry }: Reorde
   const suggestions = data?.items ?? [];
 
   return (
-    <Card>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-800">Reorder suggestions</h2>
-          <p className="text-xs text-slate-500">
-            Flagged low/out-of-stock items with suggested purchase quantities from your last {WINDOW_DAYS} days of
-            consumption.
-          </p>
+    <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold tracking-tight text-slate-800">Reorder suggestions</h2>
+          {suggestions.length > 0 && <Badge variant="amber">{suggestions.length} to restock</Badge>}
         </div>
-        {suggestions.length > 0 && (
-          <Badge variant="amber">
-            {suggestions.length} {suggestions.length === 1 ? 'item' : 'items'} to restock
-          </Badge>
-        )}
-      </div>
+        <p className="hidden text-xs text-slate-500 md:block">
+          Consumption over the last {WINDOW_DAYS} days
+        </p>
+      </header>
 
       {isError ? (
-        <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+        <div className="flex items-center gap-3 px-4 py-5">
           <p className="text-sm text-slate-500">Could not compute reorder suggestions.</p>
-          <button type="button" className="btn-secondary" onClick={onRetry}>
+          <button type="button" className="btn-secondary ml-auto" onClick={onRetry}>
             <RefreshCw className="h-4 w-4" />
             Retry
           </button>
@@ -48,75 +41,79 @@ export function ReorderSuggestionsCard({ canManage, onRestock, onRetry }: Reorde
       ) : isFetching && !data ? (
         <div className="space-y-2 px-4 py-3">
           {Array.from({ length: 3 }).map((_, index) => (
-            <Skeleton key={index} className="h-5 w-full" />
+            <div key={index} className="flex items-center gap-3">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="ml-auto h-4 w-10" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-7 w-20 rounded-md" />
+            </div>
           ))}
         </div>
       ) : suggestions.length === 0 ? (
-        <EmptyState
-          icon={<CheckCircle2 className="h-6 w-6" />}
-          title="All stock levels healthy"
-          description="No items are currently below their minimum — check back after a few days of sales."
-        />
-      ) : (
-        <div className="scroll-x">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="px-3 sm:px-4 py-3 font-semibold">Item</th>
-                <th className="px-3 sm:px-4 py-3 font-semibold">On hand</th>
-                <th className="px-3 sm:px-4 py-3 font-semibold">Health</th>
-                <th className="px-3 sm:px-4 py-3 font-semibold">Used / day</th>
-                <th className="px-3 sm:px-4 py-3 font-semibold">Days left</th>
-                <th className="px-3 sm:px-4 py-3 font-semibold">Suggested to order</th>
-                <th className="px-3 sm:px-4 py-3 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {suggestions.map((suggestion: ReorderSuggestionItem) => {
-                const item = suggestion.item;
-                return (
-                  <tr key={item.id} className="transition hover:bg-slate-50/70">
-                    <td className="px-3 sm:px-4 py-3">
-                      <p className="font-medium text-slate-800">{item.name}</p>
-                      {item.category && <p className="text-xs text-slate-500">{item.category}</p>}
-                    </td>
-                    <td className="px-3 sm:px-4 py-3 font-semibold text-slate-700">
-                      {item.quantity}
-                      <span className="ml-1 text-xs font-normal text-slate-400">{STOCK_UNIT_LABELS[item.unit]}</span>
-                    </td>
-                    <td className="px-3 sm:px-4 py-3">
-                      <Badge variant={STOCK_HEALTH_BADGE[item.health]}>{STOCK_HEALTH_LABELS[item.health]}</Badge>
-                    </td>
-                    <td className="px-3 sm:px-4 py-3 text-slate-600">{suggestion.consumptionPerDay}</td>
-                    <td className="px-3 sm:px-4 py-3 text-slate-600">
-                      {suggestion.daysOfStock === '0' ? (
-                        <span className="font-medium text-red-600">out of stock</span>
-                      ) : (
-                        suggestion.daysOfStock ?? '—'
-                      )}
-                    </td>
-                    <td className="px-3 sm:px-4 py-3 font-semibold text-slate-800">{suggestion.suggestedQuantity ?? '—'}</td>
-                    <td className="px-3 sm:px-4 py-3">
-                      <div className="flex justify-end">
-                        {canManage && (
-                          <button
-                            type="button"
-                            className="btn-secondary"
-                            onClick={() => onRestock(item, suggestion.suggestedQuantity ?? '')}
-                          >
-                            <ShoppingCart className="h-4 w-4" />
-                            Restock
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="flex items-center gap-3 px-4 py-5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+            <CheckCircle2 className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-sm font-medium text-slate-700">All stock levels are healthy</p>
+            <p className="text-xs text-slate-500">No items are currently below their minimum stock level.</p>
+          </div>
         </div>
+      ) : (
+        <ul className="flex flex-col">
+          {suggestions.map((suggestion: ReorderSuggestionItem) => {
+            const item = suggestion.item;
+            return (
+              <li
+                key={item.id}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-slate-50 px-4 py-3 last:border-0 hover:bg-slate-50/70"
+              >
+                <div className="min-w-0 flex-1 basis-36">
+                  <p className="truncate text-sm font-medium text-slate-800">{item.name}</p>
+                  {item.category && <p className="truncate text-xs text-slate-500">{item.category}</p>}
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold tabular-nums text-slate-700">
+                    {item.quantity}
+                    <span className="ml-0.5 text-xs font-normal text-slate-400">
+                      {STOCK_UNIT_LABELS[item.unit]}
+                    </span>
+                  </p>
+                  <p
+                    className={
+                      suggestion.daysOfStock === '0'
+                        ? 'text-xs font-medium text-red-600'
+                        : 'text-xs text-slate-400'
+                    }
+                  >
+                    {suggestion.daysOfStock === null ? '—' : suggestion.daysOfStock === '0' ? 'out of stock' : `${suggestion.daysOfStock}d left`}
+                  </p>
+                </div>
+                <Badge variant={STOCK_HEALTH_BADGE[item.health]}>
+                  {STOCK_HEALTH_LABELS[item.health]}
+                </Badge>
+                <div className="text-right">
+                  <p className="text-xs text-slate-400">Suggested</p>
+                  <p className="text-sm font-semibold tabular-nums text-slate-800">
+                    {suggestion.suggestedQuantity ?? '—'}
+                  </p>
+                </div>
+                {canManage && (
+                  <button
+                    type="button"
+                    className="btn-secondary px-3 py-1.5 text-xs"
+                    onClick={() => onRestock(item, suggestion.suggestedQuantity ?? '')}
+                  >
+                    <ShoppingCart className="h-3.5 w-3.5" />
+                    Restock
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
-    </Card>
+    </section>
   );
 }

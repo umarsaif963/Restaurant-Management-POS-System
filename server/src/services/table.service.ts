@@ -9,6 +9,7 @@ import type {
 } from '@restaurant/shared';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
+import { requireTenantId } from '../config/tenant-context.js';
 import { ApiError } from '../utils/ApiError.js';
 
 type TableWithSection = NonNullable<Prisma.RestaurantTableGetPayload<{
@@ -61,7 +62,11 @@ async function toSection(
 
 export async function createSection(input: CreateTableSectionInput): Promise<TableSectionProfile> {
   const section = await prisma.tableSection.create({
-    data: { name: input.name, position: input.position ?? 0 },
+    data: {
+      restaurantId: requireTenantId(),
+      name: input.name,
+      position: input.position ?? 0,
+    },
   });
   return toSection(section.id, section.name, section.position);
 }
@@ -115,6 +120,7 @@ async function requireTable(id: string): Promise<void> {
 export async function createTable(input: CreateTableInput): Promise<RestaurantTableProfile> {
   const table = await prisma.restaurantTable.create({
     data: {
+      restaurantId: requireTenantId(),
       tableNumber: input.tableNumber,
       name: input.name ?? null,
       capacity: input.capacity ?? 2,

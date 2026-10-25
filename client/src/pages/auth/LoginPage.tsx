@@ -35,7 +35,7 @@ export function LoginPage() {
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
 
   const state = location.state as LoginLocationState | null;
-  const from = state?.from?.pathname ?? '/';
+  const from = state?.from?.pathname ?? '/app';
 
   async function onSubmit(values: LoginFormValues) {
     setFormError(null);
@@ -50,7 +50,7 @@ export function LoginPage() {
   }
 
   if (currentUser && !meLoading && !meUninitialized && !meFetching) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={currentUser.role === 'SUPER_ADMIN' ? '/platform' : '/app'} replace />;
   }
 
   return (

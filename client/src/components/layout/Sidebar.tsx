@@ -1,21 +1,26 @@
 import { NavLink } from 'react-router-dom';
 import { X, UtensilsCrossed } from 'lucide-react';
-import type { UserRole } from '@restaurant/shared';
+import type { Permission } from '@restaurant/shared';
 import { APP_NAME, APP_VERSION, NAV_SECTIONS, type NavSection } from '@/constants/routes';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { closeSidebar } from '@/store/slices/uiSlice';
 
 const ENV_LABEL = import.meta.env.DEV ? 'Development' : 'Production';
 
-function visibleSections(userRoles?: UserRole[]): NavSection[] {
-  return NAV_SECTIONS.filter(
-    (section) => !section.roles || section.roles.some((role) => userRoles?.includes(role)),
-  )
+function isAllowed(
+  required: Permission[] | undefined,
+  granted: readonly Permission[] | undefined,
+): boolean {
+  if (!required || required.length === 0) return true;
+  if (!granted) return false;
+  return required.some((permission) => granted.includes(permission));
+}
+
+function visibleSections(granted?: readonly Permission[]): NavSection[] {
+  return NAV_SECTIONS.filter((section) => isAllowed(section.permissions, granted))
     .map((section) => ({
       ...section,
-      items: section.items.filter(
-        (item) => !item.roles || item.roles.some((role) => userRoles?.includes(role)),
-      ),
+      items: section.items.filter((item) => isAllowed(item.permissions, granted)),
     }))
     .filter((section) => section.items.length > 0);
 }
@@ -24,7 +29,7 @@ export function Sidebar() {
   const dispatch = useAppDispatch();
   const sidebarOpen = useAppSelector((state) => state.ui.sidebarOpen);
   const currentUser = useAppSelector((state) => state.auth.user);
-  const sections = visibleSections(currentUser ? [currentUser.role] : undefined);
+  const sections = visibleSections(currentUser?.permissions);
 
   const handleNavigate = () => {
     dispatch(closeSidebar());

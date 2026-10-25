@@ -36,7 +36,7 @@ export function Topbar() {
     } catch {
       // local state is cleared regardless so the user can sign back in
     }
-    navigate('/login', { replace: true });
+    navigate('/', { replace: true });
   }
 
   return (

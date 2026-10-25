@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import { UserRole } from '@prisma/client';
 import { authenticate } from '../middleware/authenticate.js';
-import { authorize } from '../middleware/authorize.js';
+import { requirePermission } from '../middleware/permissions.js';
 import { validate } from '../middleware/validate.js';
 import {
   orderBreakdown,
@@ -14,7 +13,7 @@ import { analyticsRangeQuerySchema, topItemsQuerySchema } from '../validators/an
 const router = Router();
 
 router.use(authenticate());
-router.use(authorize(UserRole.MANAGER, UserRole.ADMIN));
+router.use(requirePermission('REPORTS_VIEW'));
 
 router.get('/sales', validate({ query: analyticsRangeQuerySchema }), salesByDay);
 router.get('/top-items', validate({ query: topItemsQuerySchema }), topItems);

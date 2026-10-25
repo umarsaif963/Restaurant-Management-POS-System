@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import { UserRole } from '@prisma/client';
 import { authenticate } from '../middleware/authenticate.js';
-import { authorize } from '../middleware/authorize.js';
+import { requirePermission } from '../middleware/permissions.js';
 import { validate } from '../middleware/validate.js';
 import * as recipeController from '../controllers/recipe.controller.js';
 import {
@@ -15,29 +14,33 @@ const router = Router();
 
 router.use(authenticate());
 
-const managers = [UserRole.MANAGER, UserRole.ADMIN];
-
-router.get('/', validate({ query: listRecipesQuerySchema }), recipeController.listRecipes);
+router.get(
+  '/',
+  requirePermission('RECIPES_READ'),
+  validate({ query: listRecipesQuerySchema }),
+  recipeController.listRecipes,
+);
 router.get(
   '/:id',
+  requirePermission('RECIPES_READ'),
   validate({ params: resourceIdParamsSchema }),
   recipeController.getRecipe,
 );
 router.post(
   '/',
-  authorize(...managers),
+  requirePermission('RECIPES_WRITE'),
   validate({ body: createRecipeSchema }),
   recipeController.createRecipe,
 );
 router.patch(
   '/:id',
-  authorize(...managers),
+  requirePermission('RECIPES_WRITE'),
   validate({ params: resourceIdParamsSchema, body: updateRecipeSchema }),
   recipeController.updateRecipe,
 );
 router.delete(
   '/:id',
-  authorize(...managers),
+  requirePermission('RECIPES_WRITE'),
   validate({ params: resourceIdParamsSchema }),
   recipeController.deleteRecipe,
 );

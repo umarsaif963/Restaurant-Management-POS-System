@@ -9,6 +9,7 @@ import type {
 } from '@restaurant/shared';
 import { Prisma } from '@prisma/client';
 import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
+import { requireTenantId } from '../config/tenant-context.js';
 import { ApiError } from '../utils/ApiError.js';
 import { RESERVATION_WINDOW_HOURS } from '../validators/reservation.schema.js';
 
@@ -197,6 +198,7 @@ export async function createReservation(
     }
     const created = await tx.reservation.create({
       data: {
+        restaurantId: requireTenantId(),
         customerName: input.customerName,
         phone: input.phone ?? null,
         customerId: input.customerId ?? null,

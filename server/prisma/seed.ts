@@ -1,12 +1,39 @@
 import 'dotenv/config';
-import { PrismaClient, UserRole, StockUnit } from '@prisma/client';
+import { PrismaClient, StockUnit, UserRole, Permission as PrismaPermission } from '@prisma/client';
+import { ALL_RESTAURANT_PERMISSIONS, ROLE_DEFAULT_PERMISSIONS } from '@restaurant/shared';
 import bcrypt from 'bcryptjs';
 import { fromCents, percentOf, toCents } from '../src/utils/money.js';
 import { consumeIngredients } from '../src/services/inventory-consumption.service.js';
+import { runWithScope } from '../src/config/tenant-context.js';
 
 const prisma = new PrismaClient();
 const BCRYPT_ROUNDS = 12;
 const HASH = (password: string) => bcrypt.hash(password, BCRYPT_ROUNDS);
+
+/**
+ * The shared permission catalogue is a string union; Prisma models permissions
+ * as an enum. This maps one onto the other so the seed can reuse the shared
+ * defaults instead of duplicating them.
+ */
+const PRISMA_PERMISSION_BY_NAME = new Map<string, PrismaPermission>(
+  (Object.values(PrismaPermission) as string[]).map((value) => [value, value as PrismaPermission]),
+);
+
+function toPrismaPermissions(permissions: readonly string[]): PrismaPermission[] {
+  return permissions.map((permission) => {
+    const prismaPermission = PRISMA_PERMISSION_BY_NAME.get(permission);
+    if (!prismaPermission) throw new Error(`Unknown permission in seed data: ${permission}`);
+    return prismaPermission;
+  });
+}
+
+const PLATFORM_ADMIN = {
+  name: 'Platform Operator',
+  email: 'platform@restaurant.com',
+  password: 'Platform@123',
+  phone: '+1 555 010 0000',
+  role: UserRole.SUPER_ADMIN,
+} as const;
 
 const USERS = [
   { name: 'System Administrator', email: 'admin@restaurant.com', password: 'Admin@123', phone: '+1 555 010 0001', role: UserRole.ADMIN },
@@ -659,7 +686,10 @@ async function clearDatabase(): Promise<void> {
     prisma.customer.deleteMany(),
     prisma.restaurantTable.deleteMany(),
     prisma.tableSection.deleteMany(),
+    prisma.session.deleteMany(),
+    prisma.passwordResetToken.deleteMany(),
     prisma.user.deleteMany(),
+    prisma.role.deleteMany(),
     prisma.restaurantSettings.deleteMany(),
     prisma.restaurant.deleteMany(),
   ]);
@@ -673,12 +703,16 @@ async function main(): Promise<void> {
   const restaurant = await prisma.restaurant.create({
     data: {
       name: 'Bella Vista Restaurant',
+      slug: 'bella-vista',
       address: '123 Main Street, Downtown',
       phone: '+1 555 010 2200',
       email: 'hello@bellavista.example',
       currency: 'USD',
       taxPercentage: '10',
       serviceChargePct: '5',
+      isActive: true,
+      status: 'ACTIVE',
+      plan: 'PROFESSIONAL',
       settings: {
         create: {
           taxPercentage: '10',
@@ -702,23 +736,152 @@ async function main(): Promise<void> {
     },
   });
 
+  const restaurantId = restaurant.id;
+
+  // The platform operator lives outside every restaurant: no restaurantId, so
+  // the tenant scope never applies to it and it can only reach the platform
+  // endpoints.
+  const platformAdmin = await prisma.user.create({
+    data: {
+      name: PLATFORM_ADMIN.name,
+      email: PLATFORM_ADMIN.email,
+      password: await HASH(PLATFORM_ADMIN.password),
+      phone: PLATFORM_ADMIN.phone,
+      role: PLATFORM_ADMIN.role,
+      restaurantId: null,
+    },
+  });
+
+  const userIdsByEmail = new Map<string, string>();
   await Promise.all(
-    USERS.map(async (u) =>
-      prisma.user.create({
+    USERS.map(async (u) => {
+      const created = await prisma.user.create({
         data: {
           name: u.name,
           email: u.email,
           password: await HASH(u.password),
           phone: u.phone,
           role: u.role,
+          restaurantId,
         },
-      }),
-    ),
+      });
+      userIdsByEmail.set(u.email, created.id);
+      return created;
+    }),
   );
+
+  // The restaurant owner is the seeded ADMIN.
+  const adminUserId = userIdsByEmail.get('admin@restaurant.com');
+  if (!adminUserId) throw new Error('Seed admin user was not created');
+  await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: { ownerId: adminUserId },
+  });
+
+  // Built-in job functions are code-defined, but they are also materialised as
+  // `isSystem` role rows so the roles screen can show them. Their permission
+  // lists mirror ROLE_DEFAULT_PERMISSIONS exactly.
+  const builtInRoles: { name: string; slug: string; description: string; permissions: PrismaPermission[] }[] = [
+    {
+      name: 'Owner / Administrator',
+      slug: 'admin',
+      description: 'Full control over the restaurant workspace.',
+      permissions: toPrismaPermissions(ALL_RESTAURANT_PERMISSIONS),
+    },
+    {
+      name: 'Manager',
+      slug: 'manager',
+      description: 'Runs the floor: orders, menu, reports and stock movements.',
+      permissions: toPrismaPermissions(ROLE_DEFAULT_PERMISSIONS.MANAGER),
+    },
+    {
+      name: 'Cashier',
+      slug: 'cashier',
+      description: 'Takes orders and payments at the register.',
+      permissions: toPrismaPermissions(ROLE_DEFAULT_PERMISSIONS.CASHIER),
+    },
+    {
+      name: 'Waiter',
+      slug: 'waiter',
+      description: 'Serves tables and manages reservations.',
+      permissions: toPrismaPermissions(ROLE_DEFAULT_PERMISSIONS.WAITER),
+    },
+    {
+      name: 'Kitchen Staff',
+      slug: 'kitchen-staff',
+      description: 'Prepares dishes and manages kitchen tickets.',
+      permissions: toPrismaPermissions(ROLE_DEFAULT_PERMISSIONS.KITCHEN_STAFF),
+    },
+  ];
+
+  const roleIdBySlug = new Map<string, string>();
+  for (const role of builtInRoles) {
+    const created = await prisma.role.create({
+      data: {
+        restaurantId,
+        name: role.name,
+        slug: role.slug,
+        description: role.description,
+        permissions: role.permissions,
+        isSystem: true,
+      },
+    });
+    roleIdBySlug.set(role.slug, created.id);
+  }
+
+  // Attach the matching built-in role row to each seeded employee. The row's
+  // permission list is identical to the code default for that job function, so
+  // the effective permissions do not change - but the roles screen now shows
+  // real member counts.
+  const builtInRoleSlugByUserRole: Record<string, string> = {
+    ADMIN: 'admin',
+    MANAGER: 'manager',
+    CASHIER: 'cashier',
+    WAITER: 'waiter',
+    KITCHEN_STAFF: 'kitchen-staff',
+  };
+  for (const u of USERS) {
+    const userId = userIdsByEmail.get(u.email);
+    const roleId = roleIdBySlug.get(builtInRoleSlugByUserRole[u.role] ?? '');
+    if (!userId || !roleId) continue;
+    await prisma.user.update({ where: { id: userId }, data: { roleId } });
+  }
+
+  // A custom role proves the "exact permission set" path works end to end: the
+  // employee below resolves to this list instead of the built-in defaults.
+  const shiftLeadRole = await prisma.role.create({
+    data: {
+      restaurantId,
+      name: 'Shift Lead',
+      slug: 'shift-lead',
+      description: 'Cashier duties plus inventory movements and audit visibility.',
+      permissions: toPrismaPermissions([
+        ...ROLE_DEFAULT_PERMISSIONS.CASHIER,
+        'INVENTORY_READ',
+        'INVENTORY_TRANSACT',
+        'AUDIT_LOGS_VIEW',
+      ]),
+      isSystem: false,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      name: 'Shift Lead',
+      email: 'shiftlead@restaurant.com',
+      password: await HASH('ShiftLead@123'),
+      phone: '+1 555 010 0006',
+      role: UserRole.CASHIER,
+      restaurantId,
+      roleId: shiftLeadRole.id,
+    },
+  });
 
   const sections = await Promise.all(
     SECTIONS.map((section) =>
-      prisma.tableSection.create({ data: { name: section.name, position: section.position } }),
+      prisma.tableSection.create({
+        data: { restaurantId, name: section.name, position: section.position },
+      }),
     ),
   );
 
@@ -728,6 +891,7 @@ async function main(): Promise<void> {
     for (const tableNumber of section.tables) {
       await prisma.restaurantTable.create({
         data: {
+          restaurantId,
           tableNumber,
           name: `Table ${String(tableNumber).padStart(2, '0')}`,
           capacity: CAPACITY_BY_TABLE[tableNumber] ?? 4,
@@ -742,6 +906,7 @@ async function main(): Promise<void> {
     CUSTOMERS.map((customer) =>
       prisma.customer.create({
         data: {
+          restaurantId,
           name: customer.name,
           phone: customer.phone,
           email: customer.email,
@@ -754,15 +919,24 @@ async function main(): Promise<void> {
     ),
   );
 
-  const adminUser = await prisma.user.findFirst({ where: { email: 'admin@restaurant.com' }, select: { id: true } });
-  const customersByEmail = await prisma.customer.findMany({ select: { id: true, email: true } });
+  const adminUser = await prisma.user.findFirst({
+    where: { email: 'admin@restaurant.com', restaurantId },
+    select: { id: true },
+  });
+  const customersByEmail = await prisma.customer.findMany({
+    where: { restaurantId },
+    select: { id: true, email: true },
+  });
   const customerIdByEmail = new Map(customersByEmail.map((customer) => [customer.email, customer.id]));
-  const tableIdByNumber = new Map((await prisma.restaurantTable.findMany({ select: { id: true, tableNumber: true } }))
-    .map((table) => [table.tableNumber, table.id]));
+  const tableIdByNumber = new Map(
+    (await prisma.restaurantTable.findMany({ where: { restaurantId }, select: { id: true, tableNumber: true } }))
+      .map((table) => [table.tableNumber, table.id]),
+  );
 
   for (const reservation of RESERVATIONS) {
     await prisma.reservation.create({
       data: {
+        restaurantId,
         customerName: reservation.customerName,
         phone: reservation.phone ?? null,
         customerId: reservation.customerEmail ? (customerIdByEmail.get(reservation.customerEmail) ?? null) : null,
@@ -779,7 +953,12 @@ async function main(): Promise<void> {
   const categoryRecords = new Map<string, string>();
   for (const category of CATEGORIES) {
     const record = await prisma.menuCategory.create({
-      data: { name: category.name, position: category.position, description: category.description },
+      data: {
+        restaurantId,
+        name: category.name,
+        position: category.position,
+        description: category.description,
+      },
     });
     categoryRecords.set(category.name, record.id);
   }
@@ -790,6 +969,7 @@ async function main(): Promise<void> {
 
     await prisma.menuItem.create({
       data: {
+        restaurantId,
         name: item.name,
         sku: item.sku,
         price: item.price,
@@ -798,9 +978,18 @@ async function main(): Promise<void> {
         taxRate: item.taxRate,
         categoryId,
         variations: item.variations
-          ? { create: item.variations.map((v) => ({ name: v.name, priceAdjustment: v.priceAdjustment, isDefault: v.isDefault ?? false })) }
+          ? {
+              create: item.variations.map((v) => ({
+                restaurantId,
+                name: v.name,
+                priceAdjustment: v.priceAdjustment,
+                isDefault: v.isDefault ?? false,
+              })),
+            }
           : undefined,
-        addOns: item.addOns ? { create: item.addOns.map((a) => ({ name: a.name, price: a.price })) } : undefined,
+        addOns: item.addOns
+          ? { create: item.addOns.map((a) => ({ restaurantId, name: a.name, price: a.price })) }
+          : undefined,
       },
     });
   }
@@ -809,6 +998,7 @@ async function main(): Promise<void> {
     INVENTORY_ITEMS.map((item) =>
       prisma.inventoryItem.create({
         data: {
+          restaurantId,
           name: item.name,
           sku: item.sku,
           unit: item.unit,
@@ -821,13 +1011,17 @@ async function main(): Promise<void> {
     ),
   );
 
-  const inventoryByName = await prisma.inventoryItem.findMany({ select: { id: true, name: true } });
+  const inventoryByName = await prisma.inventoryItem.findMany({
+    where: { restaurantId },
+    select: { id: true, name: true },
+  });
   const inventoryIdByName = new Map(inventoryByName.map((item) => [item.name, item.id]));
 
   await Promise.all(
     SUPPLIERS.map((supplier) =>
       prisma.supplier.create({
         data: {
+          restaurantId,
           name: supplier.name,
           company: supplier.company,
           phone: supplier.phone,
@@ -839,10 +1033,14 @@ async function main(): Promise<void> {
     ),
   );
   for (const recipe of RECIPES) {
-    const menuItem = await prisma.menuItem.findFirst({ where: { name: recipe.menuItemName }, select: { id: true } });
+    const menuItem = await prisma.menuItem.findFirst({
+      where: { restaurantId, name: recipe.menuItemName },
+      select: { id: true },
+    });
     if (!menuItem) throw new Error(`Unknown menu item for recipe: ${recipe.menuItemName}`);
     await prisma.recipe.create({
       data: {
+        restaurantId,
         menuItemId: menuItem.id,
         name: recipe.name,
         yield: recipe.yield,
@@ -850,7 +1048,7 @@ async function main(): Promise<void> {
           create: recipe.ingredients.map((ingredient) => {
             const id = inventoryIdByName.get(ingredient.itemName);
             if (!id) throw new Error(`Unknown ingredient for recipe: ${recipe.name} -> ${ingredient.itemName}`);
-            return { inventoryItemId: id, quantity: ingredient.quantity };
+            return { restaurantId, inventoryItemId: id, quantity: ingredient.quantity };
           }),
         },
       },
@@ -858,13 +1056,19 @@ async function main(): Promise<void> {
   }
 
   // ---- Demo orders for the dashboard & analytics (Module 13) ----------------
-  const settings = await prisma.restaurantSettings.findFirst();
+  const settings = await prisma.restaurantSettings.findUnique({ where: { restaurantId } });
   if (!settings) throw new Error('Settings missing — cannot seed demo orders');
-  const orderUser = adminUser ?? (await prisma.user.findFirst({ where: { email: 'admin@restaurant.com' }, select: { id: true } }));
+  const orderUser = adminUser ?? (await prisma.user.findFirst({
+    where: { email: 'admin@restaurant.com', restaurantId },
+    select: { id: true },
+  }));
   if (!orderUser) throw new Error('Admin user missing — cannot seed demo orders');
 
   const demoSkus = [...new Set(SEED_ORDERS.flatMap((order) => order.items.map((line) => line.sku)))];
-  const demoMenuItems = await prisma.menuItem.findMany({ where: { sku: { in: demoSkus } }, select: { id: true, sku: true, name: true, price: true, taxRate: true } });
+  const demoMenuItems = await prisma.menuItem.findMany({
+    where: { restaurantId, sku: { in: demoSkus } },
+    select: { id: true, sku: true, name: true, price: true, taxRate: true },
+  });
   const menuBySku = new Map(demoMenuItems.map((item) => [item.sku, item]));
 
   for (const order of SEED_ORDERS) {
@@ -899,6 +1103,7 @@ async function main(): Promise<void> {
 
     const record = await prisma.order.create({
       data: {
+        restaurantId,
         orderNumber: order.orderNumber,
         orderType: order.orderType,
         status: order.status,
@@ -916,13 +1121,14 @@ async function main(): Promise<void> {
         notes: order.notes ?? null,
         completedAt: order.status === 'COMPLETED' ? new Date(createdAt.getTime() + order.completedOffsetMs) : null,
         createdAt,
-        items: { create: lines },
+        items: { create: lines.map((line) => ({ restaurantId, ...line })) },
       },
     });
 
     for (const payment of order.payments ?? []) {
       await prisma.payment.create({
         data: {
+          restaurantId,
           orderId: record.id,
           amount: payment.amount,
           method: payment.method,
@@ -939,21 +1145,26 @@ async function main(): Promise<void> {
     // The root client is passed straight in: PrismaClient satisfies
     // TransactionClient, and the pooler's proxy drops long-lived interactive
     // transactions (P2028), which the seed is far too slow to avoid.
+    //
+    // The consumption path reads the tenant from the request scope, so the
+    // whole order loop runs inside a tenant scope.
     if (order.status === 'COMPLETED') {
-      await consumeIngredients(prisma, {
-        orderId: record.id,
-        userId: orderUser.id,
-        lines: order.items.map((line) => ({
-          menuItemId: menuBySku.get(line.sku)!.id,
-          quantity: line.quantity,
-        })),
-        note: `Consumed by ${order.orderNumber}`,
-      });
+      await runWithScope({ kind: 'tenant', restaurantId }, () =>
+        consumeIngredients(prisma, {
+          orderId: record.id,
+          userId: orderUser.id,
+          lines: order.items.map((line) => ({
+            menuItemId: menuBySku.get(line.sku)!.id,
+            quantity: line.quantity,
+          })),
+          note: `Consumed by ${order.orderNumber}`,
+        }),
+      );
       // consumeIngredients stamps the ledger rows with "now". Re-date them to
       // the order's completion time so the 14-day reorder-suggestion window
       // and the per-item consumption rates reflect the seeded history.
       await prisma.inventoryTransaction.updateMany({
-        where: { referenceIds: record.id, type: 'SALE' },
+        where: { restaurantId, referenceIds: record.id, type: 'SALE' },
         data: { createdAt: new Date(createdAt.getTime() + order.completedOffsetMs) },
       });
     }
@@ -961,7 +1172,7 @@ async function main(): Promise<void> {
 
   // ---- Seed audit trail (Module 14) ----------------------------------------
   const managerUser = await prisma.user.findFirst({
-    where: { email: 'manager@restaurant.com' },
+    where: { email: 'manager@restaurant.com', restaurantId },
     select: { id: true },
   });
   const seedAudit: {
@@ -975,7 +1186,7 @@ async function main(): Promise<void> {
     status: number;
   }[] = [
     { action: 'auth.login', entity: 'auth', userId: adminUser?.id, method: 'POST', path: '/api/v1/auth/login', offsetHours: -14 * 24, status: 200 },
-    { action: 'user.create', entity: 'user', userId: adminUser?.id, method: 'POST', path: '/api/v1/users', offsetHours: -13 * 24, status: 201 },
+    { action: 'user.create', entity: 'user', userId: adminUser?.id, method: 'POST', path: '/api/v1/employees', offsetHours: -13 * 24, status: 201 },
     { action: 'menu.create', entity: 'menu', userId: adminUser?.id, method: 'POST', path: '/api/v1/menu-items', offsetHours: -12 * 24, status: 201 },
     { action: 'auth.login', entity: 'auth', userId: managerUser?.id, method: 'POST', path: '/api/v1/auth/login', offsetHours: -3 * 24, status: 200 },
     { action: 'order.create', entity: 'order', entityId: 'ORD000001', userId: managerUser?.id, method: 'POST', path: '/api/v1/orders', offsetHours: -5 * 24, status: 201 },
@@ -991,6 +1202,7 @@ async function main(): Promise<void> {
   for (const entry of seedAudit) {
     await prisma.auditLog.create({
       data: {
+        restaurantId,
         userId: entry.userId ?? null,
         action: entry.action,
         entity: entry.entity,
@@ -1013,13 +1225,13 @@ async function main(): Promise<void> {
   // so a table can never be shown occupied with nothing seated on it; a table
   // an order just left is CLEANING; RESERVED comes from a held table.
   const openOrderTables = await prisma.order.findMany({
-    where: { status: { notIn: ['COMPLETED', 'CANCELLED'] }, tableId: { not: null } },
+    where: { restaurantId, status: { notIn: ['COMPLETED', 'CANCELLED'] }, tableId: { not: null } },
     select: { tableId: true },
   });
   const openTableIds = new Set(openOrderTables.map((order) => order.tableId));
 
   const completedOrderTables = await prisma.order.findMany({
-    where: { status: 'COMPLETED', tableId: { not: null } },
+    where: { restaurantId, status: 'COMPLETED', tableId: { not: null } },
     orderBy: { completedAt: 'desc' },
     select: { tableId: true },
   });
@@ -1028,13 +1240,14 @@ async function main(): Promise<void> {
   const reservedTableIds = new Set(
     (
       await prisma.reservation.findMany({
-        where: { status: { in: ['PENDING', 'CONFIRMED'] }, tableId: { not: null } },
+        where: { restaurantId, status: { in: ['PENDING', 'CONFIRMED'] }, tableId: { not: null } },
         select: { tableId: true },
       })
     ).map((reservation) => reservation.tableId),
   );
 
   const tableRecords = await prisma.restaurantTable.findMany({
+    where: { restaurantId },
     select: { id: true, tableNumber: true },
   });
   for (const table of tableRecords) {
@@ -1050,6 +1263,7 @@ async function main(): Promise<void> {
 
   const counts = await prisma.$transaction([
     prisma.user.count(),
+    prisma.role.count(),
     prisma.menuCategory.count(),
     prisma.menuItem.count(),
     prisma.menuItemVariation.count(),
@@ -1071,17 +1285,19 @@ async function main(): Promise<void> {
   // eslint-disable-next-line no-console
   console.log('Seeding completed:');
   // eslint-disable-next-line no-console
-  console.log(`  restaurant: ${restaurant.name} (${restaurant.currency})`);
+  console.log(`  restaurant: ${restaurant.name} (${restaurant.slug}, ${restaurant.plan})`);
   // eslint-disable-next-line no-console
-  console.log(`  users: ${counts[0]}, categories: ${counts[1]}, menu items: ${counts[2]}, variations: ${counts[3]}, add-ons: ${counts[4]}`);
+  console.log(`  platform admin: ${platformAdmin.email}`);
   // eslint-disable-next-line no-console
-  console.log(`  tables: ${counts[5]}, sections: ${counts[6]}, inventory items: ${counts[7]}, customers: ${counts[8]}`);
+  console.log(`  users: ${counts[0]}, roles: ${counts[1]}, categories: ${counts[2]}, menu items: ${counts[3]}, variations: ${counts[4]}, add-ons: ${counts[5]}`);
   // eslint-disable-next-line no-console
-  console.log(`  recipes: ${counts[9]}, recipe ingredients: ${counts[10]}, suppliers: ${counts[11]}, reservations: ${counts[12]}`);
+  console.log(`  tables: ${counts[6]}, sections: ${counts[7]}, inventory items: ${counts[8]}, customers: ${counts[9]}`);
   // eslint-disable-next-line no-console
-  console.log(`  orders: ${counts[13]}, order items: ${counts[14]}, payments: ${counts[15]}`);
+  console.log(`  recipes: ${counts[10]}, recipe ingredients: ${counts[11]}, suppliers: ${counts[12]}, reservations: ${counts[13]}`);
   // eslint-disable-next-line no-console
-  console.log(`  audit logs: ${counts[16]}`);
+  console.log(`  orders: ${counts[14]}, order items: ${counts[15]}, payments: ${counts[16]}`);
+  // eslint-disable-next-line no-console
+  console.log(`  audit logs: ${counts[17]}`);
 }
 
 main()

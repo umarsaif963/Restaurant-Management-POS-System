@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import { UserRole } from '@prisma/client';
 import { authenticate } from '../middleware/authenticate.js';
-import { authorize } from '../middleware/authorize.js';
+import { requirePermission } from '../middleware/permissions.js';
 import { validate } from '../middleware/validate.js';
 import * as settingsController from '../controllers/settings.controller.js';
 import { updateSettingsBodySchema } from '../validators/settings.schema.js';
@@ -10,10 +9,10 @@ const router = Router();
 
 router.use(authenticate());
 
-router.get('/', settingsController.getSettings);
+router.get('/', requirePermission('SETTINGS_READ'), settingsController.getSettings);
 router.patch(
   '/',
-  authorize(UserRole.MANAGER, UserRole.ADMIN),
+  requirePermission('SETTINGS_WRITE'),
   validate({ body: updateSettingsBodySchema }),
   settingsController.updateSettings,
 );

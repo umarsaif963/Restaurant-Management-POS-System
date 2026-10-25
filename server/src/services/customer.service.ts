@@ -7,6 +7,7 @@ import type {
 } from '@restaurant/shared';
 import { Prisma, type Customer } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
+import { requireTenantId } from '../config/tenant-context.js';
 import { ApiError } from '../utils/ApiError.js';
 
 function toCustomer(customer: Customer): CustomerProfile {
@@ -72,6 +73,7 @@ export async function getCustomer(id: string): Promise<CustomerProfile> {
 export async function createCustomer(input: CreateCustomerInput): Promise<CustomerProfile> {
   const customer = await prisma.customer.create({
     data: {
+      restaurantId: requireTenantId(),
       name: input.name,
       phone: input.phone ?? null,
       email: input.email ?? null,

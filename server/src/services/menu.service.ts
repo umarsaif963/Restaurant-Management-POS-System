@@ -16,6 +16,7 @@ import type {
 } from '@restaurant/shared';
 import { Prisma, type AddOn, type MenuCategory, type MenuItemVariation } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
+import { requireTenantId } from '../config/tenant-context.js';
 import { ApiError } from '../utils/ApiError.js';
 import {
   getMaxProducibleForMenuItems,
@@ -140,6 +141,7 @@ export async function createCategory(
 ): Promise<MenuCategoryProfile> {
   const category = await prisma.menuCategory.create({
     data: {
+      restaurantId: requireTenantId(),
       name: input.name,
       description: input.description ?? null,
       position: input.position ?? 0,
@@ -232,6 +234,8 @@ async function requireItem(id: string): Promise<MenuItemWithRelations> {
 export async function createItem(input: CreateMenuItemInput): Promise<MenuItemProfile> {
   await requireCategory(input.categoryId);
 
+  const restaurantId = requireTenantId();
+
   const variations = input.variations ?? [];
   if (variations.length > 0) {
     const hasDefault = variations.some((variation) => variation.isDefault === true);
@@ -242,6 +246,7 @@ export async function createItem(input: CreateMenuItemInput): Promise<MenuItemPr
 
   const item = await prisma.menuItem.create({
     data: {
+      restaurantId,
       name: input.name,
       price: input.price,
       sku: input.sku ?? null,
@@ -252,10 +257,24 @@ export async function createItem(input: CreateMenuItemInput): Promise<MenuItemPr
       imageUrl: input.imageUrl ?? null,
       position: input.position ?? 0,
       variations: variations.length
-        ? { create: variations.map((variation) => ({ name: variation.name, priceAdjustment: variation.priceAdjustment ?? '0', isDefault: variation.isDefault ?? false })) }
+        ? {
+            create: variations.map((variation) => ({
+              restaurantId,
+              name: variation.name,
+              priceAdjustment: variation.priceAdjustment ?? '0',
+              isDefault: variation.isDefault ?? false,
+            })),
+          }
         : undefined,
       addOns: input.addOns?.length
-        ? { create: input.addOns.map((addOn) => ({ name: addOn.name, price: addOn.price, available: addOn.available ?? true })) }
+        ? {
+            create: input.addOns.map((addOn) => ({
+              restaurantId,
+              name: addOn.name,
+              price: addOn.price,
+              available: addOn.available ?? true,
+            })),
+          }
         : undefined,
     },
     include: itemInclude(),
@@ -303,6 +322,7 @@ export async function createVariation(
   await requireItem(itemId);
   const variation = await prisma.menuItemVariation.create({
     data: {
+      restaurantId: requireTenantId(),
       menuItemId: itemId,
       name: input.name,
       priceAdjustment: input.priceAdjustment ?? '0',
@@ -361,6 +381,7 @@ export async function createAddOn(itemId: string, input: CreateAddOnInput): Prom
   await requireItem(itemId);
   const addOn = await prisma.addOn.create({
     data: {
+      restaurantId: requireTenantId(),
       menuItemId: itemId,
       name: input.name,
       price: input.price,

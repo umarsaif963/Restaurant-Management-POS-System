@@ -7,6 +7,7 @@ import type {
 } from '@restaurant/shared';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
+import { requireTenantId } from '../config/tenant-context.js';
 import { ApiError } from '../utils/ApiError.js';
 
 type SupplierWithCount = Prisma.SupplierGetPayload<{
@@ -75,6 +76,7 @@ export async function getSupplier(id: string): Promise<SupplierProfile> {
 export async function createSupplier(input: CreateSupplierInput): Promise<SupplierProfile> {
   const created = await prisma.supplier.create({
     data: {
+      restaurantId: requireTenantId(),
       name: input.name,
       company: input.company ?? null,
       phone: input.phone ?? null,

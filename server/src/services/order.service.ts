@@ -11,6 +11,7 @@ import type {
 } from '@restaurant/shared';
 import { OrderStatus, Prisma, type Order } from '@prisma/client';
 import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
+import { requireTenantId } from '../config/tenant-context.js';
 import { ApiError } from '../utils/ApiError.js';
 import { fromCents, percentOf, toCents } from '../utils/money.js';
 import { derivePaymentStatus } from '../utils/billing.js';
@@ -304,6 +305,7 @@ export async function createOrder(
 
         const created = await tx.order.create({
           data: {
+            restaurantId: requireTenantId(),
             orderNumber,
             orderType,
             status: OrderStatus.PENDING,
@@ -322,6 +324,7 @@ export async function createOrder(
             balanceDue: fromCents(grandTotalCents),
             items: {
               create: lines.map((line) => ({
+                restaurantId: requireTenantId(),
                 menuItemId: line.menuItemId,
                 name: line.name,
                 variationName: line.variationName,
@@ -482,6 +485,7 @@ export async function addItems(
     for (const line of lines) {
       const createdItem = await tx.orderItem.create({
         data: {
+          restaurantId: requireTenantId(),
           orderId: id,
           menuItemId: line.menuItemId,
           name: line.name,
@@ -507,6 +511,7 @@ export async function addItems(
       if (openTicket) {
         await tx.kitchenOrderItem.createMany({
           data: lines.map((line, index) => ({
+            restaurantId: requireTenantId(),
             kitchenOrderId: openTicket.id,
             orderItemId: orderItems[index].id,
             menuItemId: line.menuItemId,
@@ -521,11 +526,13 @@ export async function addItems(
         const previousTickets = await tx.kitchenOrder.count({ where: { orderId: id } });
         const ticket = await tx.kitchenOrder.create({
           data: {
+            restaurantId: requireTenantId(),
             orderId: id,
             notes: order.kitchenNotes,
             ticketNumber: previousTickets + 1,
             items: {
               create: lines.map((line, index) => ({
+                restaurantId: requireTenantId(),
                 orderItemId: orderItems[index].id,
                 menuItemId: line.menuItemId,
                 name: line.name,
@@ -641,10 +648,12 @@ export async function updateStatus(
       if (existingTickets === 0) {
         await tx.kitchenOrder.create({
           data: {
+            restaurantId: requireTenantId(),
             orderId: id,
             notes: order.kitchenNotes,
             items: {
               create: order.items.map((item) => ({
+                restaurantId: requireTenantId(),
                 orderItemId: item.id,
                 menuItemId: item.menuItemId,
                 name: item.name,

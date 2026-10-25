@@ -1,9 +1,12 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { RequireAuth } from '@/components/auth/RequireAuth';
-import { RoleGuard } from '@/components/auth/RoleGuard';
+import { PermissionGuard } from '@/components/auth/PermissionGuard';
+import { PlatformGuard } from '@/components/auth/PlatformGuard';
+import { MarketingLayout } from '@/components/marketing/MarketingLayout';
 import { SystemStatusPage } from '@/pages/SystemStatusPage';
-import { UsersPage } from '@/pages/UsersPage';
+import { EmployeesPage } from '@/pages/EmployeesPage';
+import { RolesPage } from '@/pages/RolesPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { TablesPage } from '@/pages/TablesPage';
@@ -24,14 +27,87 @@ import { KdsPage } from '@/pages/kds/KdsPage';
 import { PrintReceiptPage } from '@/pages/print/PrintReceiptPage';
 import { PrintKitchenPage } from '@/pages/print/PrintKitchenPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
+import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
+import { HomePage } from '@/pages/marketing/HomePage';
+import { FeaturesPage } from '@/pages/marketing/FeaturesPage';
+import { PricingPage } from '@/pages/marketing/PricingPage';
+import { AboutPage } from '@/pages/marketing/AboutPage';
+import { ContactPage } from '@/pages/marketing/ContactPage';
+import { PrivacyPage } from '@/pages/marketing/PrivacyPage';
+import { TermsPage } from '@/pages/marketing/TermsPage';
+import { PlatformLayout } from '@/pages/platform/PlatformLayout';
+import { PlatformRestaurantsPage } from '@/pages/platform/PlatformRestaurantsPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
 export const router = createBrowserRouter([
+  // ---- Public marketing site -------------------------------------
+  {
+    path: '/',
+    element: (
+      <MarketingLayout>
+        <HomePage />
+      </MarketingLayout>
+    ),
+  },
+  {
+    path: '/features',
+    element: (
+      <MarketingLayout>
+        <FeaturesPage />
+      </MarketingLayout>
+    ),
+  },
+  {
+    path: '/pricing',
+    element: (
+      <MarketingLayout>
+        <PricingPage />
+      </MarketingLayout>
+    ),
+  },
+  {
+    path: '/about',
+    element: (
+      <MarketingLayout>
+        <AboutPage />
+      </MarketingLayout>
+    ),
+  },
+  {
+    path: '/contact',
+    element: (
+      <MarketingLayout>
+        <ContactPage />
+      </MarketingLayout>
+    ),
+  },
+  {
+    path: '/privacy',
+    element: (
+      <MarketingLayout>
+        <PrivacyPage />
+      </MarketingLayout>
+    ),
+  },
+  {
+    path: '/terms',
+    element: (
+      <MarketingLayout>
+        <TermsPage />
+      </MarketingLayout>
+    ),
+  },
+
+  // ---- Authentication ---------------------------------------------
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/register',
+    element: <RegisterPage />,
   },
   {
     path: '/forgot-password',
@@ -41,6 +117,8 @@ export const router = createBrowserRouter([
     path: '/reset-password',
     element: <ResetPasswordPage />,
   },
+
+  // ---- Printable documents (standalone, no workspace shell) --------
   {
     path: '/print/receipt/:orderId',
     element: (
@@ -57,8 +135,10 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
   },
+
+  // ---- Restaurant workspace ---------------------------------------
   {
-    path: '/',
+    path: '/app',
     element: (
       <RequireAuth>
         <AppLayout />
@@ -75,110 +155,165 @@ export const router = createBrowserRouter([
       },
       {
         path: 'tables',
-        element: <TablesPage />,
+        element: (
+          <PermissionGuard permissions={['TABLES_READ']}>
+            <TablesPage />
+          </PermissionGuard>
+        ),
       },
       {
         path: 'pos',
         element: (
-          <RoleGuard roles={['ADMIN', 'MANAGER', 'CASHIER', 'WAITER']}>
+          <PermissionGuard permissions={['POS_USE']}>
             <POSPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'orders',
-        element: <OrdersPage />,
+        element: (
+          <PermissionGuard permissions={['ORDERS_READ']}>
+            <OrdersPage />
+          </PermissionGuard>
+        ),
       },
       {
         path: 'kitchen',
         element: (
-          <RoleGuard roles={['ADMIN', 'MANAGER', 'KITCHEN_STAFF']}>
+          <PermissionGuard permissions={['KITCHEN_READ']}>
             <KitchenOrdersPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'kds',
         element: (
-          <RoleGuard roles={['ADMIN', 'MANAGER', 'KITCHEN_STAFF']}>
+          <PermissionGuard permissions={['KDS_VIEW']}>
             <KdsPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'menu',
-        element: <MenuPage />,
+        element: (
+          <PermissionGuard permissions={['MENU_READ']}>
+            <MenuPage />
+          </PermissionGuard>
+        ),
       },
       {
         path: 'inventory',
-        element: <InventoryPage />,
+        element: (
+          <PermissionGuard permissions={['INVENTORY_READ']}>
+            <InventoryPage />
+          </PermissionGuard>
+        ),
       },
       {
         path: 'recipes',
-        element: <RecipesPage />,
+        element: (
+          <PermissionGuard permissions={['RECIPES_READ']}>
+            <RecipesPage />
+          </PermissionGuard>
+        ),
       },
       {
         path: 'suppliers',
-        element: <SuppliersPage />,
+        element: (
+          <PermissionGuard permissions={['SUPPLIERS_READ']}>
+            <SuppliersPage />
+          </PermissionGuard>
+        ),
       },
       {
         path: 'purchases',
-        element: <PurchasesPage />,
+        element: (
+          <PermissionGuard permissions={['PURCHASES_READ']}>
+            <PurchasesPage />
+          </PermissionGuard>
+        ),
       },
       {
         path: 'reservations',
-        element: <ReservationsPage />,
+        element: (
+          <PermissionGuard permissions={['RESERVATIONS_READ']}>
+            <ReservationsPage />
+          </PermissionGuard>
+        ),
       },
       {
         path: 'dashboard',
         element: (
-          <RoleGuard roles={['ADMIN', 'MANAGER']}>
+          <PermissionGuard permissions={['DASHBOARD_VIEW']}>
             <DashboardPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'reports',
         element: (
-          <RoleGuard roles={['ADMIN', 'MANAGER']}>
+          <PermissionGuard permissions={['REPORTS_VIEW']}>
             <ReportsPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'audit-logs',
         element: (
-          <RoleGuard roles={['ADMIN', 'MANAGER']}>
+          <PermissionGuard permissions={['AUDIT_LOGS_VIEW']}>
             <AuditLogsPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'customers',
         element: (
-          <RoleGuard roles={['ADMIN', 'MANAGER', 'CASHIER', 'WAITER']}>
+          <PermissionGuard permissions={['CUSTOMERS_READ']}>
             <CustomersPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
-        path: 'users',
+        path: 'employees',
         element: (
-          <RoleGuard roles={['ADMIN', 'MANAGER']}>
-            <UsersPage />
-          </RoleGuard>
+          <PermissionGuard permissions={['EMPLOYEES_READ']}>
+            <EmployeesPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: 'roles',
+        element: (
+          <PermissionGuard permissions={['ROLES_READ']}>
+            <RolesPage />
+          </PermissionGuard>
         ),
       },
       {
         path: 'settings',
         element: (
-          <RoleGuard roles={['ADMIN', 'MANAGER']}>
+          <PermissionGuard permissions={['SETTINGS_READ']}>
             <SettingsPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
     ],
   },
+
+  // ---- Platform console -------------------------------------------
+  {
+    path: '/platform',
+    element: (
+      <RequireAuth>
+        <PlatformGuard>
+          <PlatformLayout>
+            <PlatformRestaurantsPage />
+          </PlatformLayout>
+        </PlatformGuard>
+      </RequireAuth>
+    ),
+  },
+
   {
     path: '*',
     element: <NotFoundPage />,

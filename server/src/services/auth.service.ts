@@ -44,6 +44,18 @@ async function createSession(
   return { sessionId: session.id, refreshToken };
 }
 
+/**
+ * Create a session for a freshly registered account so the new owner is
+ * signed in immediately after onboarding.
+ */
+export async function startSession(
+  userId: string,
+  ip?: string,
+  userAgent?: string,
+): Promise<{ sessionId: string; refreshToken: string }> {
+  return createSession(userId, ip, userAgent);
+}
+
 async function fetchUserRow(userId: string): Promise<UserRow> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -58,7 +70,14 @@ async function fetchUserRow(userId: string): Promise<UserRow> {
 export async function login(params: LoginParams): Promise<SessionResult> {
   const account = await prisma.user.findUnique({
     where: { email: params.email },
-    select: { id: true, password: true, status: true, role: true },
+    select: {
+      id: true,
+      password: true,
+      status: true,
+      role: true,
+      restaurantId: true,
+      restaurant: { select: { status: true } },
+    },
   });
 
   // Generic failure keeps account existence and status from being enumerated.
@@ -68,6 +87,16 @@ export async function login(params: LoginParams): Promise<SessionResult> {
     !(await verifyPassword(params.password, account.password))
   ) {
     throw ApiError.unauthorized('Invalid email or password');
+  }
+
+  // A suspended venue keeps its data but cannot be used.
+  if (account.restaurant && account.restaurant.status === 'SUSPENDED') {
+    throw ApiError.forbidden('This restaurant account has been suspended. Contact support.');
+  }
+
+  // Every account except the platform operator belongs to a restaurant.
+  if (account.role !== 'SUPER_ADMIN' && !account.restaurantId) {
+    throw ApiError.forbidden('This account is not linked to a restaurant');
   }
 
   const { sessionId, refreshToken } = await createSession(

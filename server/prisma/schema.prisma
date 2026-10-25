@@ -8,20 +8,51 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// A tenant. Every operational record in the system belongs to exactly one
+/// restaurant, and every query is scoped by `restaurantId`.
 model Restaurant {
-  id               String              @id @default(cuid())
+  id               String            @id @default(cuid())
   name             String
+  slug             String            @unique
   logoUrl          String?
   address          String?
   phone            String?
   email            String?
-  currency         String              @default("USD")
-  taxPercentage    Decimal             @default(0) @db.Decimal(5, 2)
-  serviceChargePct Decimal             @default(0) @db.Decimal(5, 2)
-  isActive         Boolean             @default(true)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  currency         String            @default("USD")
+  taxPercentage    Decimal           @default(0) @db.Decimal(5, 2)
+  serviceChargePct Decimal           @default(0) @db.Decimal(5, 2)
+  isActive         Boolean           @default(true)
+  status           RestaurantStatus  @default(ACTIVE)
+  plan             SubscriptionPlan  @default(STARTER)
+  ownerId          String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  owner            User?             @relation("RestaurantOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   settings         RestaurantSettings?
+  members          User[]            @relation("RestaurantMembers")
+  roles            Role[]
+  tableSections    TableSection[]
+  tables           RestaurantTable[]
+  customers        Customer[]
+  categories       MenuCategory[]
+  menuItems        MenuItem[]
+  orders           Order[]
+  orderItems       OrderItem[]
+  payments         Payment[]
+  kitchenOrders    KitchenOrder[]
+  kitchenItems     KitchenOrderItem[]
+  reservations     Reservation[]
+  inventoryItems   InventoryItem[]
+  stockMovements   InventoryTransaction[]
+  recipes          Recipe[]
+  recipeIngredients RecipeIngredient[]
+  suppliers        Supplier[]
+  purchases        Purchase[]
+  purchaseItems    PurchaseItem[]
+  auditLogs        AuditLog[]
+
+  @@index([status])
+  @@index([plan])
 }
 
 model RestaurantSettings {
@@ -42,6 +73,26 @@ model RestaurantSettings {
   restaurant                 Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 }
 
+/// A named, reusable permission set inside a restaurant.
+/// The built-in job functions (ADMIN / MANAGER / CASHIER / WAITER /
+/// KITCHEN_STAFF) are code-defined; owners can add custom roles here.
+model Role {
+  id           String       @id @default(cuid())
+  restaurantId String
+  name         String
+  slug         String
+  description  String?
+  permissions  Permission[] @default([])
+  isSystem     Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  restaurant   Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  members      User[]       @relation("UserCustomRole")
+
+  @@unique([restaurantId, slug])
+  @@index([restaurantId])
+}
+
 model User {
   id                    String               @id @default(cuid())
   name                  String
@@ -53,6 +104,14 @@ model User {
   pin                   String?
   avatarUrl             String?
   lastLoginAt           DateTime?
+  /// `null` only for the platform super admin, who is not tied to a venue.
+  restaurantId          String?
+  /// Optional custom role; when set it defines the account's exact permission set.
+  roleId                String?
+  extraPermissions      Permission[]         @default([])
+  restrictedPermissions Permission[]         @default([])
+  mustChangePassword    Boolean              @default(false)
+  invitedById           String?
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
   auditLogs             AuditLog[]
@@ -62,6 +121,16 @@ model User {
   receivedPayments      Payment[]            @relation("PaymentReceiver")
   createdReservations   Reservation[]        @relation("ReservationCreator")
   sessions              Session[]
+  restaurant            Restaurant?           @relation("RestaurantMembers", fields: [restaurantId], references: [id], onDelete: Cascade)
+  ownedRestaurants      Restaurant[]         @relation("RestaurantOwner")
+  customRole            Role?                 @relation("UserCustomRole", fields: [roleId], references: [id], onDelete: SetNull)
+  invitedBy             User?                 @relation("UserInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+  invitees              User[]                @relation("UserInviter")
+  stockMovements        InventoryTransaction[]
+
+  @@index([restaurantId])
+  @@index([roleId])
+  @@index([status])
 }
 
 model Session {
@@ -95,17 +164,22 @@ model PasswordResetToken {
 }
 
 model TableSection {
-  id        String            @id @default(cuid())
-  name      String
-  position  Int               @default(0)
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  tables    RestaurantTable[]
+  id           String            @id @default(cuid())
+  restaurantId String
+  name         String
+  position     Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  restaurant   Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tables       RestaurantTable[]
+
+  @@index([restaurantId])
 }
 
 model RestaurantTable {
   id           String        @id @default(cuid())
-  tableNumber  Int           @unique
+  restaurantId String
+  tableNumber  Int
   name         String?
   capacity     Int           @default(2)
   sectionId    String?
@@ -113,16 +187,20 @@ model RestaurantTable {
   qrCodeUrl    String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  restaurant   Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   orders       Order[]
   reservations Reservation[]
-  section      TableSection? @relation(fields: [sectionId], references: [id])
+  section      TableSection?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
 
+  @@unique([restaurantId, tableNumber])
+  @@index([restaurantId])
   @@index([sectionId])
   @@index([status])
 }
 
 model Customer {
   id            String        @id @default(cuid())
+  restaurantId  String
   name          String
   phone         String?
   email         String?
@@ -132,30 +210,37 @@ model Customer {
   totalSpending Decimal       @default(0) @db.Decimal(12, 2)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  restaurant    Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   orders        Order[]
   reservations  Reservation[]
 
+  @@index([restaurantId])
   @@index([phone])
   @@index([name])
 }
 
 model MenuCategory {
-  id          String         @id @default(cuid())
-  name        String
-  description String?
-  position    Int            @default(0)
-  status      MenuItemStatus @default(ACTIVE)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  items       MenuItem[]
+  id           String         @id @default(cuid())
+  restaurantId String
+  name         String
+  description  String?
+  position     Int            @default(0)
+  status       MenuItemStatus @default(ACTIVE)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items        MenuItem[]
+
+  @@index([restaurantId])
 }
 
 model MenuItem {
   id                String              @id @default(cuid())
+  restaurantId      String
   name              String
   description       String?
   price             Decimal             @db.Decimal(12, 2)
-  sku               String?             @unique
+  sku               String?
   categoryId        String
   taxRate           Decimal             @default(0) @db.Decimal(5, 2)
   preparationTime   Int?
@@ -165,6 +250,7 @@ model MenuItem {
   status            MenuItemStatus      @default(ACTIVE)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
+  restaurant        Restaurant          @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   addOns            AddOn[]
   kitchenOrderItems KitchenOrderItem[]
   category          MenuCategory        @relation(fields: [categoryId], references: [id])
@@ -172,12 +258,15 @@ model MenuItem {
   orderItems        OrderItem[]
   recipes           Recipe?
 
+  @@unique([restaurantId, sku])
+  @@index([restaurantId])
   @@index([categoryId])
   @@index([name])
 }
 
 model MenuItemVariation {
   id              String   @id @default(cuid())
+  restaurantId    String
   menuItemId      String
   name            String
   priceAdjustment Decimal  @default(0) @db.Decimal(12, 2)
@@ -186,25 +275,29 @@ model MenuItemVariation {
   updatedAt       DateTime @updatedAt
   menuItem        MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
 
+  @@index([restaurantId])
   @@index([menuItemId])
 }
 
 model AddOn {
-  id         String   @id @default(cuid())
-  menuItemId String
-  name       String
-  price      Decimal  @db.Decimal(12, 2)
-  available  Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  restaurantId String
+  menuItemId   String
+  name         String
+  price        Decimal  @db.Decimal(12, 2)
+  available    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  menuItem     MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
 
+  @@index([restaurantId])
   @@index([menuItemId])
 }
 
 model Order {
   id                  String           @id @default(cuid())
-  orderNumber         String           @unique
+  restaurantId        String
+  orderNumber         String
   orderType           OrderType        @default(DINE_IN)
   status              OrderStatus      @default(PENDING)
   paymentStatus       PaymentStatus    @default(UNPAID)
@@ -225,6 +318,7 @@ model Order {
   completedAt         DateTime?
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
+  restaurant          Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   kitchenOrders       KitchenOrder[]
   customer            Customer?        @relation(fields: [customerId], references: [id])
   table               RestaurantTable? @relation(fields: [tableId], references: [id])
@@ -232,7 +326,8 @@ model Order {
   items               OrderItem[]
   payments            Payment[]
 
-  @@index([orderNumber])
+  @@unique([restaurantId, orderNumber])
+  @@index([restaurantId])
   @@index([status])
   @@index([createdAt])
   @@index([tableId])
@@ -241,6 +336,7 @@ model Order {
 
 model OrderItem {
   id                String             @id @default(cuid())
+  restaurantId      String
   orderId           String
   menuItemId        String
   name              String
@@ -254,16 +350,19 @@ model OrderItem {
   notes             String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  restaurant        Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   kitchenOrderItems KitchenOrderItem[]
   menuItem          MenuItem           @relation(fields: [menuItemId], references: [id])
   order             Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
+  @@index([restaurantId])
   @@index([orderId])
   @@index([menuItemId])
 }
 
 model Payment {
   id             String        @id @default(cuid())
+  restaurantId   String
   orderId        String
   amount         Decimal       @db.Decimal(12, 2)
   method         PaymentMethod @default(CASH)
@@ -276,11 +375,13 @@ model Payment {
   paidAt         DateTime      @default(now())
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  restaurant     Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   receivedBy     User?         @relation("PaymentReceiver", fields: [receivedById], references: [id])
   refundOf       Payment?      @relation("PaymentRefunds", fields: [refundOfId], references: [id])
   refunds        Payment[]     @relation("PaymentRefunds")
 
+  @@index([restaurantId])
   @@index([orderId])
   @@index([receivedById])
   @@index([paidAt])
@@ -288,6 +389,7 @@ model Payment {
 
 model KitchenOrder {
   id           String             @id @default(cuid())
+  restaurantId String
   orderId      String
   ticketNumber Int                @default(1)
   status       KitchenOrderStatus @default(PENDING)
@@ -298,16 +400,19 @@ model KitchenOrder {
   completedAt  DateTime?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
+  restaurant   Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   acceptedBy   User?              @relation("KitchenAcceptor", fields: [acceptedById], references: [id])
   order        Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
   items        KitchenOrderItem[]
 
+  @@index([restaurantId])
   @@index([orderId])
   @@index([status])
 }
 
 model KitchenOrderItem {
   id             String            @id @default(cuid())
+  restaurantId   String
   kitchenOrderId String
   orderItemId    String
   menuItemId     String
@@ -318,16 +423,19 @@ model KitchenOrderItem {
   status         KitchenItemStatus @default(WAITING)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
+  restaurant     Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   kitchenOrder   KitchenOrder      @relation(fields: [kitchenOrderId], references: [id], onDelete: Cascade)
   menuItem       MenuItem          @relation(fields: [menuItemId], references: [id])
   orderItem      OrderItem         @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
 
+  @@index([restaurantId])
   @@index([kitchenOrderId])
   @@index([status])
 }
 
 model Reservation {
   id           String            @id @default(cuid())
+  restaurantId String
   customerName String
   phone        String?
   customerId   String?
@@ -339,10 +447,12 @@ model Reservation {
   createdById  String?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+  restaurant   Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   createdBy    User?             @relation("ReservationCreator", fields: [createdById], references: [id])
   customer     Customer?         @relation(fields: [customerId], references: [id])
   table        RestaurantTable?  @relation(fields: [tableId], references: [id])
 
+  @@index([restaurantId])
   @@index([date])
   @@index([tableId])
   @@index([status])
@@ -350,8 +460,9 @@ model Reservation {
 
 model InventoryItem {
   id                String                 @id @default(cuid())
+  restaurantId      String
   name              String
-  sku               String?                @unique
+  sku               String?
   unit              StockUnit              @default(PIECE)
   quantity          Decimal                @default(0) @db.Decimal(12, 3)
   minQuantity       Decimal                @default(0) @db.Decimal(12, 3)
@@ -362,17 +473,21 @@ model InventoryItem {
   isActive          Boolean                @default(true)
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
+  restaurant        Restaurant             @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   supplier          Supplier?              @relation(fields: [supplierId], references: [id])
   transactions      InventoryTransaction[]
   purchaseItems     PurchaseItem[]
   recipeIngredients RecipeIngredient[]
 
+  @@unique([restaurantId, sku])
+  @@index([restaurantId])
   @@index([name])
   @@index([category])
 }
 
 model InventoryTransaction {
   id              String                   @id @default(cuid())
+  restaurantId    String
   inventoryItemId String
   type            InventoryTransactionType
   quantity        Decimal                  @db.Decimal(12, 3)
@@ -382,40 +497,51 @@ model InventoryTransaction {
   referenceIds    String?
   userId          String?
   createdAt       DateTime                 @default(now())
+  restaurant      Restaurant               @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   inventoryItem   InventoryItem            @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  user            User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  @@index([restaurantId])
   @@index([inventoryItemId])
   @@index([type])
   @@index([createdAt])
 }
 
 model Recipe {
-  id          String             @id @default(cuid())
-  menuItemId  String             @unique
-  name        String
-  yield       Int                @default(1)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  menuItem    MenuItem           @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  ingredients RecipeIngredient[]
+  id           String             @id @default(cuid())
+  restaurantId String
+  menuItemId   String             @unique
+  name         String
+  yield        Int                @default(1)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  restaurant   Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  menuItem     MenuItem           @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredients  RecipeIngredient[]
+
+  @@index([restaurantId])
 }
 
 model RecipeIngredient {
   id              String        @id @default(cuid())
+  restaurantId    String
   recipeId        String
   inventoryItemId String
   quantity        Decimal       @db.Decimal(12, 3)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  restaurant      Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
   recipe          Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
+  @@index([restaurantId])
   @@index([recipeId])
   @@index([inventoryItemId])
 }
 
 model Supplier {
   id             String          @id @default(cuid())
+  restaurantId   String
   name           String
   company        String?
   phone          String?
@@ -424,13 +550,17 @@ model Supplier {
   notes          String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  restaurant     Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   inventoryItems InventoryItem[]
   purchases      Purchase[]
+
+  @@index([restaurantId])
 }
 
 model Purchase {
   id             String         @id @default(cuid())
-  purchaseNumber String         @unique
+  restaurantId   String
+  purchaseNumber String
   supplierId     String
   status         PurchaseStatus @default(PENDING)
   totalAmount    Decimal        @default(0) @db.Decimal(12, 2)
@@ -438,15 +568,19 @@ model Purchase {
   receivedAt     DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  restaurant     Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   supplier       Supplier       @relation(fields: [supplierId], references: [id])
   items          PurchaseItem[]
 
+  @@unique([restaurantId, purchaseNumber])
+  @@index([restaurantId])
   @@index([supplierId])
   @@index([status])
 }
 
 model PurchaseItem {
   id              String        @id @default(cuid())
+  restaurantId    String
   purchaseId      String
   inventoryItemId String
   quantity        Decimal       @db.Decimal(12, 3)
@@ -454,29 +588,60 @@ model PurchaseItem {
   amount          Decimal       @db.Decimal(12, 2)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  restaurant      Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
   purchase        Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
 
+  @@index([restaurantId])
   @@index([purchaseId])
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String?
-  action    String
-  entity    String
-  entityId  String?
-  metadata  Json?
-  ip        String?
-  createdAt DateTime @default(now())
-  user      User?    @relation(fields: [userId], references: [id])
+  id           String      @id @default(cuid())
+  /// `null` for platform-level entries that are not tied to a venue.
+  restaurantId String?
+  userId       String?
+  action       String
+  entity       String
+  entityId     String?
+  metadata     Json?
+  ip           String?
+  createdAt    DateTime    @default(now())
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user         User?       @relation(fields: [userId], references: [id])
 
+  @@index([restaurantId])
   @@index([createdAt])
   @@index([entity])
   @@index([userId])
 }
 
+/// A message sent from the public marketing site. The sender has no account
+/// yet, so this is deliberately not tenant-owned.
+model ContactMessage {
+  id        String               @id @default(cuid())
+  name      String
+  email     String
+  company   String?
+  message   String
+  status    ContactMessageStatus @default(NEW)
+  ip        String?
+  userAgent String?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([status, createdAt])
+}
+
+enum ContactMessageStatus {
+  NEW
+  READ
+  ARCHIVED
+}
+
 enum UserRole {
+  /// Platform operator. Never granted through public signup.
+  SUPER_ADMIN
   ADMIN
   MANAGER
   CASHIER
@@ -488,6 +653,64 @@ enum UserStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
+}
+
+enum RestaurantStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum SubscriptionPlan {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum Permission {
+  PLATFORM_VIEW_RESTAURANTS
+  PLATFORM_MANAGE_RESTAURANTS
+  PLATFORM_VIEW_STATS
+  PLATFORM_MANAGE_PLANS
+  PLATFORM_MANAGE_SETTINGS
+  POS_USE
+  ORDERS_READ
+  ORDERS_CREATE
+  ORDERS_UPDATE
+  ORDERS_CANCEL
+  ORDERS_REFUND
+  PAYMENTS_CREATE
+  PAYMENTS_REFUND
+  RECEIPTS_PRINT
+  KITCHEN_READ
+  KITCHEN_UPDATE
+  KDS_VIEW
+  MENU_READ
+  MENU_WRITE
+  INVENTORY_READ
+  INVENTORY_WRITE
+  INVENTORY_TRANSACT
+  RECIPES_READ
+  RECIPES_WRITE
+  SUPPLIERS_READ
+  SUPPLIERS_WRITE
+  PURCHASES_READ
+  PURCHASES_WRITE
+  TABLES_READ
+  TABLES_WRITE
+  CUSTOMERS_READ
+  CUSTOMERS_WRITE
+  RESERVATIONS_READ
+  RESERVATIONS_WRITE
+  DASHBOARD_VIEW
+  REPORTS_VIEW
+  AUDIT_LOGS_VIEW
+  SETTINGS_READ
+  SETTINGS_WRITE
+  EMPLOYEES_READ
+  EMPLOYEES_WRITE
+  ROLES_READ
+  ROLES_WRITE
 }
 
 enum TableStatus {

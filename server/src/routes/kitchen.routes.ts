@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import { UserRole } from '@prisma/client';
 import { authenticate } from '../middleware/authenticate.js';
-import { authorize } from '../middleware/authorize.js';
+import { requirePermission } from '../middleware/permissions.js';
 import { validate } from '../middleware/validate.js';
 import * as kitchenController from '../controllers/kitchen.controller.js';
 import {
@@ -14,21 +13,21 @@ const router = Router();
 
 router.use(authenticate());
 
-const kitchenStaff = [UserRole.KITCHEN_STAFF, UserRole.MANAGER, UserRole.ADMIN];
-
 router.get(
   '/',
+  requirePermission('KITCHEN_READ'),
   validate({ query: listKitchenOrdersQuerySchema }),
   kitchenController.listKitchenOrders,
 );
 router.get(
   '/:id',
+  requirePermission('KITCHEN_READ'),
   validate({ params: resourceIdParamsSchema }),
   kitchenController.getKitchenOrder,
 );
 router.post(
   '/:id/status',
-  authorize(...kitchenStaff),
+  requirePermission('KITCHEN_UPDATE'),
   validate({ params: resourceIdParamsSchema, body: updateKitchenOrderStatusSchema }),
   kitchenController.updateKitchenStatus,
 );

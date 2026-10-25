@@ -61,7 +61,7 @@ export function KitchenOrdersPage() {
         description="Live production tickets — confirmed orders land here automatically."
         actions={
           <>
-            <Link to="/kds" className="btn-secondary" title="Open the live kitchen display">
+            <Link to="/app/kds" className="btn-secondary" title="Open the live kitchen display">
               <MonitorPlay className="h-4 w-4" />
               Kitchen display
             </Link>

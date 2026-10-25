@@ -9,8 +9,8 @@ export function NotFoundPage() {
       <p className="max-w-sm text-sm text-slate-500">
         The page you are looking for does not exist or has been moved.
       </p>
-      <Link to="/" className="btn-primary mt-2">
-        Back to dashboard
+      <Link to="/app" className="btn-primary mt-2">
+        Back to the workspace
       </Link>
     </div>
   );

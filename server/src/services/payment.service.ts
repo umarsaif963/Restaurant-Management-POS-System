@@ -6,6 +6,7 @@ import type {
   RefundPaymentInput,
 } from '@restaurant/shared';
 import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
+import { requireTenantId } from '../config/tenant-context.js';
 import { ApiError } from '../utils/ApiError.js';
 import { fromCents, toCents } from '../utils/money.js';
 import { derivePaymentStatus } from '../utils/billing.js';
@@ -98,6 +99,7 @@ export async function recordPayment(
   const payment = await prisma.$transaction(async (tx) => {
     const created = await tx.payment.create({
       data: {
+        restaurantId: requireTenantId(),
         orderId,
         amount: fromCents(appliedCents),
         method: input.method,
@@ -191,6 +193,7 @@ export async function refundPayment(
   const refund = await prisma.$transaction(async (tx) => {
     const created = await tx.payment.create({
       data: {
+        restaurantId: requireTenantId(),
         orderId,
         amount: fromCents(amountCents),
         method: input.method ?? payment.method,

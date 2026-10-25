@@ -46,7 +46,7 @@ export function TransactionsModal({ open, item, onClose }: TransactionsModalProp
                 {txn.order && (
                   <p className="mt-1">
                     <Link
-                      to={`/orders?order=${txn.order.id}`}
+                      to={`/app/orders?order=${txn.order.id}`}
                       className="text-xs font-semibold text-brand-700 transition hover:underline"
                     >
                       {txn.order.orderNumber} →

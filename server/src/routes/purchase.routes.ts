@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import { UserRole } from '@prisma/client';
 import { authenticate } from '../middleware/authenticate.js';
-import { authorize } from '../middleware/authorize.js';
+import { requirePermission } from '../middleware/permissions.js';
 import { validate } from '../middleware/validate.js';
 import * as purchaseController from '../controllers/purchase.controller.js';
 import {
@@ -16,44 +15,44 @@ const router = Router();
 
 router.use(authenticate());
 
-const managers = [UserRole.MANAGER, UserRole.ADMIN];
-
 router.get(
   '/',
+  requirePermission('PURCHASES_READ'),
   validate({ query: listPurchasesQuerySchema }),
   purchaseController.listPurchases,
 );
 
 router.get(
   '/:id',
+  requirePermission('PURCHASES_READ'),
   validate({ params: purchaseParamsSchema }),
   purchaseController.getPurchase,
 );
 
 router.post(
   '/',
-  authorize(...managers),
+  requirePermission('PURCHASES_WRITE'),
   validate({ body: createPurchaseSchema }),
   purchaseController.createPurchase,
 );
 
 router.patch(
   '/:id',
-  authorize(...managers),
+  requirePermission('PURCHASES_WRITE'),
   validate({ params: purchaseParamsSchema, body: updatePurchaseSchema }),
   purchaseController.updatePurchase,
 );
 
 router.delete(
   '/:id',
-  authorize(...managers),
+  requirePermission('PURCHASES_WRITE'),
   validate({ params: purchaseParamsSchema }),
   purchaseController.deletePurchase,
 );
 
 router.post(
   '/:id/status',
-  authorize(...managers),
+  requirePermission('PURCHASES_WRITE'),
   validate({ params: purchaseParamsSchema, body: changePurchaseStatusSchema }),
   purchaseController.changePurchaseStatus,
 );

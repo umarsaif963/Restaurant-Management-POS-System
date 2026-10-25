@@ -84,12 +84,63 @@
   .pill-active {
     @apply border-brand-600 bg-brand-600 text-white shadow-sm hover:border-brand-600 hover:bg-brand-600 hover:text-white;
   }
+
+  /* ----------------------------------------------------------------------
+   * Marketing-site scale. Everything below is additive: the application
+   * shell keeps using .btn / .btn-primary exactly as before.
+   * -------------------------------------------------------------------- */
+
+  .btn-lg {
+    @apply rounded-xl px-6 py-3 text-base;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-ember-200/70 bg-ember-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-ember-700;
+  }
+
+  /* Eyebrow for dark bands. */
+  .eyebrow-dark {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-brand-300;
+  }
+
+  .section-title {
+    @apply font-display text-3xl font-semibold leading-[1.1] tracking-[-0.015em] text-ink-950 sm:text-4xl;
+  }
+
+  .section-lede {
+    @apply mt-4 text-base leading-relaxed text-ink-700/80 sm:text-lg;
+  }
 }
 
 @layer utilities {
   /* Subtle shimmer for skeletons */
   .skeleton {
     @apply animate-shimmer rounded-md bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%];
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* ----------------------------------------------------------------------
+ * Marketing scroll reveal. Elements marked with [data-reveal] start hidden
+ * and are switched to their visible state by useReveal() (IntersectionObserver).
+ * Content stays fully visible when JS or reduced-motion preferences apply.
+ * -------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  [data-reveal].is-revealed {
+    opacity: 1;
+    transform: none;
   }
 }
 

@@ -1,4 +1,5 @@
 import { InventoryTransactionType, Prisma } from '@prisma/client';
+import { requireTenantId } from '../config/tenant-context.js';
 import { ApiError } from '../utils/ApiError.js';
 import { fromMillis, toMillis } from '../utils/units.js';
 
@@ -382,6 +383,7 @@ export async function consumeIngredients(
     });
     await tx.inventoryTransaction.create({
       data: {
+        restaurantId: requireTenantId(),
         inventoryItemId: requirement.inventoryItemId,
         type: InventoryTransactionType.SALE,
         quantity: fromMillis(-requirement.requiredMillis),
@@ -412,6 +414,7 @@ async function restockRows(
     });
     await tx.inventoryTransaction.create({
       data: {
+        restaurantId: requireTenantId(),
         inventoryItemId: entry.inventoryItemId,
         type: InventoryTransactionType.ORDER_CANCEL,
         quantity: fromMillis(entry.millis),

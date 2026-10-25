@@ -3,6 +3,8 @@
  * Imported by both the Express server and the React client.
  */
 
+import type { AuthUser } from './tenant.js';
+
 export type Environment = 'development' | 'test' | 'production';
 
 export interface ApiErrorItem {
@@ -31,29 +33,91 @@ export interface HealthResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Identity & users (module 3)
+// Public marketing site
 // ---------------------------------------------------------------------------
 
-export const USER_ROLES = ['ADMIN', 'MANAGER', 'CASHIER', 'WAITER', 'KITCHEN_STAFF'] as const;
-export type UserRole = (typeof USER_ROLES)[number];
+export const CONTACT_MESSAGE_STATUSES = ['NEW', 'READ', 'ARCHIVED'] as const;
+export type ContactMessageStatus = (typeof CONTACT_MESSAGE_STATUSES)[number];
 
-export const USER_STATUSES = ['ACTIVE', 'INACTIVE', 'SUSPENDED'] as const;
-export type UserStatus = (typeof USER_STATUSES)[number];
+export interface ContactMessageInput {
+  name: string;
+  email: string;
+  company?: string | null;
+  message: string;
+}
 
-/**
- * Sanitized user record. The password hash is never exposed.
- */
-export interface AuthUser {
+export interface ContactMessageProfile {
   id: string;
   name: string;
   email: string;
-  phone: string | null;
-  role: UserRole;
-  status: UserStatus;
-  lastLoginAt: string | null;
+  company: string | null;
+  message: string;
+  status: ContactMessageStatus;
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ListContactMessagesQuery {
+  status?: ContactMessageStatus;
+  /** Newest first. */
+  limit?: number;
+}
+
+export interface UpdateContactMessageInput {
+  status: ContactMessageStatus;
+}
+
+// ---------------------------------------------------------------------------
+// Identity & users (module 3)
+// ---------------------------------------------------------------------------
+
+export {
+  PERMISSIONS,
+  PLATFORM_PERMISSIONS,
+  RESTAURANT_PERMISSIONS,
+  ALL_RESTAURANT_PERMISSIONS,
+  PERMISSION_LABELS,
+  ROLE_DEFAULT_PERMISSIONS,
+  USER_ROLES,
+  RESTAURANT_USER_ROLES,
+  PLATFORM_ROLES,
+  NON_ASSIGNABLE_ROLES,
+  isPermission,
+  isRestaurantUserRole,
+  resolvePermissions,
+  hasPermission,
+  hasAllPermissions,
+  withoutPlatformPermissions,
+  type Permission,
+  type UserRole,
+  type RestaurantUserRole,
+} from './permissions.js';
+
+export {
+  RESTAURANT_STATUSES,
+  SUBSCRIPTION_PLANS,
+  SUBSCRIPTION_PLAN_CATALOG,
+  USER_STATUSES,
+  type RestaurantStatus,
+  type SubscriptionPlan,
+  type SubscriptionPlanProfile,
+  type RegisterRestaurantInput,
+  type RegisterRestaurantResponse,
+  type AuthUser,
+  type UserStatus,
+  type EmployeeProfile,
+  type CreateEmployeeInput,
+  type UpdateEmployeeInput,
+  type ListEmployeesQuery,
+  type CreateEmployeeResult,
+  type ResetEmployeePasswordResult,
+  type RoleProfile,
+  type CreateRoleInput,
+  type UpdateRoleInput,
+  type PlatformRestaurantProfile,
+  type PlatformStats,
+  type UpdatePlatformRestaurantInput,
+} from './tenant.js';
 
 export interface Paginated<T> {
   items: T[];
@@ -90,29 +154,8 @@ export interface ChangePasswordInput {
 
 // ---- User management DTOs --------------------------------------
 
-export interface CreateUserInput {
-  name: string;
-  email: string;
-  phone?: string | null;
-  role: UserRole;
-  password: string;
-}
-
-export interface UpdateUserInput {
-  name?: string;
-  email?: string;
-  phone?: string | null;
-  role?: UserRole;
-  password?: string;
-}
-
-export interface ListUsersQuery {
-  page?: number;
-  limit?: number;
-  search?: string;
-  role?: UserRole;
-  status?: UserStatus;
-}
+// Employee management DTOs live in `tenant.ts` (CreateEmployeeInput,
+// UpdateEmployeeInput, ListEmployeesQuery, EmployeeProfile).
 
 // ---------------------------------------------------------------------------
 // Restaurant settings, tables & customers (module 4)

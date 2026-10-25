@@ -10,7 +10,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
-import type { DashboardSummary, PaymentMethodReport, SalesReport } from '@restaurant/shared';
+import type { DashboardSummary, PaymentMethodReport, Permission, SalesReport } from '@restaurant/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -23,6 +23,7 @@ import {
   useGetSalesReportQuery,
   useGetTopSellingItemsQuery,
 } from '@/store/api/analyticsApi';
+import { usePermissions } from '@/hooks/usePermissions';
 import { PAYMENT_METHOD_BADGE, PAYMENT_METHOD_LABELS } from '@/constants/payment';
 import { formatMoney } from '@/utils/format';
 
@@ -136,6 +137,9 @@ function PaymentRows({ report }: { report: PaymentMethodReport }) {
 }
 
 export function DashboardPage() {
+  const permissions = usePermissions();
+  const can = (...needed: Permission[]) => needed.some((permission) => permissions.includes(permission));
+
   const {
     data: summary,
     isError,
@@ -143,9 +147,63 @@ export function DashboardPage() {
     isLoading,
     refetch,
   } = useGetDashboardSummaryQuery(undefined, { pollingInterval: 60_000 });
-  const { data: sales } = useGetSalesReportQuery();
-  const { data: topItems } = useGetTopSellingItemsQuery({ limit: 5 });
-  const { data: payments } = useGetPaymentMethodsReportQuery();
+  // The report endpoints are guarded separately from the dashboard itself, so
+  // they are only requested by an account that may read reports.
+  const canViewReports = can('REPORTS_VIEW');
+  const { data: sales } = useGetSalesReportQuery(undefined, { skip: !canViewReports });
+  const { data: topItems } = useGetTopSellingItemsQuery({ limit: 5 }, { skip: !canViewReports });
+  const { data: payments } = useGetPaymentMethodsReportQuery(undefined, { skip: !canViewReports });
+
+  const metrics = [
+    can('REPORTS_VIEW') && {
+      key: 'revenue',
+      label: 'Revenue today',
+      value: formatMoney(summary?.today.revenue ?? '0'),
+      hint: `${summary?.today.completedOrders ?? 0} order${
+        summary?.today.completedOrders === 1 ? '' : 's'
+      } completed today`,
+      accent: Number(summary?.today.revenue ?? 0) > 0 ? ('positive' as const) : ('default' as const),
+    },
+    can('ORDERS_READ') && {
+      key: 'orders',
+      label: 'Orders today',
+      value: String(summary?.today.orders ?? 0),
+      hint: `${summary?.today.openOrders ?? 0} still open`,
+    },
+    can('REPORTS_VIEW') && {
+      key: 'aov',
+      label: 'Avg order value',
+      value: formatMoney(summary?.today.averageOrderValue ?? '0'),
+      hint: 'completed orders today',
+    },
+    can('REPORTS_VIEW') && {
+      key: 'received',
+      label: 'Net received today',
+      value: formatMoney(summary?.paymentsToday.netReceived ?? '0'),
+      hint: `${summary?.paymentsToday.count ?? 0} payment${
+        summary?.paymentsToday.count === 1 ? '' : 's'
+      } recorded`,
+    },
+    can('INVENTORY_READ') && {
+      key: 'alerts',
+      label: 'Inventory alerts',
+      value: String((summary?.inventory.lowStock ?? 0) + (summary?.inventory.outOfStock ?? 0)),
+      hint:
+        (summary?.inventory.outOfStock ?? 0) > 0
+          ? `${summary?.inventory.outOfStock} out of stock`
+          : `${summary?.inventory.lowStock ?? 0} running low`,
+      accent:
+        (summary?.inventory.lowStock ?? 0) + (summary?.inventory.outOfStock ?? 0) > 0
+          ? ('negative' as const)
+          : ('positive' as const),
+    },
+  ].filter(Boolean) as {
+    key: string;
+    label: string;
+    value: string;
+    hint: string;
+    accent?: 'default' | 'positive' | 'negative';
+  }[];
 
   return (
     <div>
@@ -171,152 +229,142 @@ export function DashboardPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, index) => <MetricSkeleton key={index} />)
-            ) : (
-              <>
-                <Metric
-                  label="Revenue today"
-                  value={formatMoney(summary.today.revenue)}
-                  hint={`${summary.today.completedOrders} order${summary.today.completedOrders === 1 ? '' : 's'} completed today`}
-                  accent={Number(summary.today.revenue) > 0 ? 'positive' : 'default'}
-                />
-                <Metric
-                  label="Orders today"
-                  value={String(summary.today.orders)}
-                  hint={`${summary.today.openOrders} still open`}
-                />
-                <Metric
-                  label="Avg order value"
-                  value={formatMoney(summary.today.averageOrderValue)}
-                  hint="completed orders today"
-                />
-                <Metric
-                  label="Net received today"
-                  value={formatMoney(summary.paymentsToday.netReceived)}
-                  hint={`${summary.paymentsToday.count} payment${summary.paymentsToday.count === 1 ? '' : 's'} recorded`}
-                />
-                <Metric
-                  label="Inventory alerts"
-                  value={String(summary.inventory.lowStock + summary.inventory.outOfStock)}
-                  hint={
-                    summary.inventory.outOfStock > 0
-                      ? `${summary.inventory.outOfStock} out of stock`
-                      : `${summary.inventory.lowStock} running low`
-                  }
-                  accent={summary.inventory.lowStock + summary.inventory.outOfStock > 0 ? 'negative' : 'positive'}
-                />
-              </>
-            )}
-          </div>
+          {metrics.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              {isLoading ? (
+                metrics.map((metric) => <MetricSkeleton key={metric.key} />)
+              ) : (
+                metrics.map((metric) => (
+                  <Metric
+                    key={metric.key}
+                    label={metric.label}
+                    value={metric.value}
+                    hint={metric.hint}
+                    accent={metric.accent}
+                  />
+                ))
+              )}
+            </div>
+          )}
 
           <div className="grid gap-6 lg:grid-cols-3">
-            <Card
-              className="lg:col-span-2"
-              title="Sales — last 7 days"
-              icon={<TrendingUp className="h-4 w-4 text-slate-400" />}
-              actions={
-                <span className="flex items-center gap-1 text-xs text-slate-400">
-                  <DollarSign className="h-3.5 w-3.5" />
-                  {sales ? formatMoney(sales.items.reduce((sum, item) => sum + Number(item.revenue), 0)) : '—'}
-                </span>
-              }
-            >
-              {!sales ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-3 w-2/3" />
-                  <Skeleton className="h-40 w-full" />
-                </div>
-              ) : (
-                <SalesBars items={sales.items} />
-              )}
-            </Card>
+            {canViewReports && (
+              <Card
+                className="lg:col-span-2"
+                title="Sales — last 7 days"
+                icon={<TrendingUp className="h-4 w-4 text-slate-400" />}
+                actions={
+                  <span className="flex items-center gap-1 text-xs text-slate-400">
+                    <DollarSign className="h-3.5 w-3.5" />
+                    {sales ? formatMoney(sales.items.reduce((sum, item) => sum + Number(item.revenue), 0)) : '—'}
+                  </span>
+                }
+              >
+                {!sales ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-3 w-2/3" />
+                    <Skeleton className="h-40 w-full" />
+                  </div>
+                ) : (
+                  <SalesBars items={sales.items} />
+                )}
+              </Card>
+            )}
 
-            <Card title="Tables" icon={<LayoutGrid className="h-4 w-4 text-slate-400" />}>
-              <TablePills summary={summary} />
-              <p className="mt-4 text-xs text-slate-400">
-                {summary.tables.available} of {summary.tables.total} tables available right now.
-              </p>
-            </Card>
+            {can('TABLES_READ') && (
+              <Card title="Tables" icon={<LayoutGrid className="h-4 w-4 text-slate-400" />}>
+                <TablePills summary={summary} />
+                <p className="mt-4 text-xs text-slate-400">
+                  {summary.tables.available} of {summary.tables.total} tables available right now.
+                </p>
+              </Card>
+            )}
 
-            <Card title="Top selling — last 30 days" icon={<BarChart3 className="h-4 w-4 text-slate-400" />}>
-              {!topItems || topItems.items.length === 0 ? (
-                <EmptyState
-                  icon={<BarChart3 className="h-6 w-6" />}
-                  title="No sales data"
-                  description="Completed orders are needed before items appear here."
-                />
-              ) : (
-                <ol className="divide-y divide-slate-100">
-                  {topItems.items.slice(0, 5).map((item, index) => (
-                    <li key={item.menuItemId} className="flex items-center justify-between gap-3 py-2.5">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
-                          {index + 1}
-                        </span>
-                        <div>
-                          <p className="text-sm font-medium text-slate-800">{item.name}</p>
-                          <p className="text-xs text-slate-400">
-                            {item.quantity} sold · {item.orders} order{item.orders === 1 ? '' : 's'}
-                          </p>
+            {canViewReports && (
+              <Card title="Top selling — last 30 days" icon={<BarChart3 className="h-4 w-4 text-slate-400" />}>
+                {!topItems || topItems.items.length === 0 ? (
+                  <EmptyState
+                    icon={<BarChart3 className="h-6 w-6" />}
+                    title="No sales data"
+                    description="Completed orders are needed before items appear here."
+                  />
+                ) : (
+                  <ol className="divide-y divide-slate-100">
+                    {topItems.items.slice(0, 5).map((item, index) => (
+                      <li key={item.menuItemId} className="flex items-center justify-between gap-3 py-2.5">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
+                            {index + 1}
+                          </span>
+                          <div>
+                            <p className="text-sm font-medium text-slate-800">{item.name}</p>
+                            <p className="text-xs text-slate-400">
+                              {item.quantity} sold · {item.orders} order{item.orders === 1 ? '' : 's'}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <span className="text-sm font-semibold text-slate-800">{formatMoney(item.revenue)}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </Card>
+                        <span className="text-sm font-semibold text-slate-800">{formatMoney(item.revenue)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </Card>
+            )}
 
-            <Card
-              title="Payments — last 30 days"
-              icon={<CreditCard className="h-4 w-4 text-slate-400" />}
-              actions={<TrendingUp className="h-4 w-4 text-slate-400" />}
-            >
-              {!payments ? (
+            {canViewReports && (
+              <Card
+                title="Payments — last 30 days"
+                icon={<CreditCard className="h-4 w-4 text-slate-400" />}
+                actions={<TrendingUp className="h-4 w-4 text-slate-400" />}
+              >
+                {!payments ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-5 w-full" />
+                    <Skeleton className="h-5 w-3/4" />
+                  </div>
+                ) : (
+                  <PaymentRows report={payments} />
+                )}
+              </Card>
+            )}
+
+            {can('RESERVATIONS_READ') && (
+              <Card
+                title="Reservations"
+                icon={<CalendarDays className="h-4 w-4 text-slate-400" />}
+                actions={<ReceiptText className="h-4 w-4 text-slate-400" />}
+              >
                 <div className="space-y-3">
-                  <Skeleton className="h-5 w-full" />
-                  <Skeleton className="h-5 w-3/4" />
+                  <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
+                    <span className="text-sm font-medium text-slate-600">Active today</span>
+                    <span className="text-lg font-bold text-slate-900">{summary.reservations.today}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
+                    <span className="text-sm font-medium text-slate-600">Upcoming</span>
+                    <span className="text-lg font-bold text-slate-900">{summary.reservations.upcoming}</span>
+                  </div>
                 </div>
-              ) : (
-                <PaymentRows report={payments} />
-              )}
-            </Card>
+              </Card>
+            )}
 
-            <Card
-              title="Reservations"
-              icon={<CalendarDays className="h-4 w-4 text-slate-400" />}
-              actions={<ReceiptText className="h-4 w-4 text-slate-400" />}
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-                  <span className="text-sm font-medium text-slate-600">Active today</span>
-                  <span className="text-lg font-bold text-slate-900">{summary.reservations.today}</span>
+            {can('INVENTORY_READ') && (
+              <Card
+                title="Inventory health"
+                icon={<Boxes className="h-4 w-4 text-slate-400" />}
+                actions={<TrendingDown className="h-4 w-4 text-slate-400" />}
+              >
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg bg-amber-50 px-4 py-3">
+                    <p className="text-xs font-medium text-amber-700">Low stock</p>
+                    <p className="mt-1 text-lg font-bold text-amber-800">{summary.inventory.lowStock}</p>
+                  </div>
+                  <div className="rounded-lg bg-red-50 px-4 py-3">
+                    <p className="text-xs font-medium text-red-700">Out of stock</p>
+                    <p className="mt-1 text-lg font-bold text-red-800">{summary.inventory.outOfStock}</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-                  <span className="text-sm font-medium text-slate-600">Upcoming</span>
-                  <span className="text-lg font-bold text-slate-900">{summary.reservations.upcoming}</span>
-                </div>
-              </div>
-            </Card>
-
-            <Card
-              title="Inventory health"
-              icon={<Boxes className="h-4 w-4 text-slate-400" />}
-              actions={<TrendingDown className="h-4 w-4 text-slate-400" />}
-            >
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-lg bg-amber-50 px-4 py-3">
-                  <p className="text-xs font-medium text-amber-700">Low stock</p>
-                  <p className="mt-1 text-lg font-bold text-amber-800">{summary.inventory.lowStock}</p>
-                </div>
-                <div className="rounded-lg bg-red-50 px-4 py-3">
-                  <p className="text-xs font-medium text-red-700">Out of stock</p>
-                  <p className="mt-1 text-lg font-bold text-red-800">{summary.inventory.outOfStock}</p>
-                </div>
-              </div>
-            </Card>
+              </Card>
+            )}
           </div>
         </div>
       )}

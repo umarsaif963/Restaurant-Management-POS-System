@@ -1,12 +1,9 @@
 import { Router, type RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
-import { UserRole } from '@prisma/client';
 import { authenticate } from '../middleware/authenticate.js';
-import { authorize } from '../middleware/authorize.js';
 import { validate } from '../middleware/validate.js';
 import * as authController from '../controllers/auth.controller.js';
 import * as authSchemas from '../validators/auth.schema.js';
-import { createUserSchema } from '../validators/user.schema.js';
 
 const router = Router();
 
@@ -56,14 +53,6 @@ router.post(
   authenticate(),
   validate({ body: authSchemas.changePasswordSchema }),
   authController.changePassword,
-);
-
-router.post(
-  '/register',
-  authenticate(),
-  authorize(UserRole.MANAGER, UserRole.ADMIN),
-  validate({ body: createUserSchema }),
-  authController.register,
 );
 
 router.post(

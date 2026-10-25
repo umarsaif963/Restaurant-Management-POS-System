@@ -8,6 +8,7 @@ import type {
 } from '@restaurant/shared';
 import { InventoryTransactionType, Prisma } from '@prisma/client';
 import { prisma, TRANSACTION_OPTIONS } from '../config/prisma.js';
+import { requireTenantId } from '../config/tenant-context.js';
 import { ApiError } from '../utils/ApiError.js';
 import { toCents, fromCents } from '../utils/money.js';
 import { fromMillis, toMillis } from '../utils/units.js';
@@ -93,7 +94,9 @@ async function ensureItemsExist(inputs: PurchaseLineInput[]): Promise<void> {
 }
 
 function linesToCreate(items: PurchaseLineInput[]) {
+  const restaurantId = requireTenantId();
   return items.map((item) => ({
+    restaurantId,
     inventoryItemId: item.inventoryItemId,
     quantity: item.quantity,
     unitCost: item.unitCost,
@@ -152,6 +155,7 @@ export async function createPurchase(
   const purchaseNumber = await nextPurchaseNumber();
   const created = await prisma.purchase.create({
     data: {
+      restaurantId: requireTenantId(),
       purchaseNumber,
       supplierId: input.supplierId,
       notes: input.notes ?? null,
@@ -271,6 +275,7 @@ export async function changePurchaseStatus(
       });
       await tx.inventoryTransaction.create({
         data: {
+          restaurantId: requireTenantId(),
           inventoryItemId: row.inventoryItemId,
           type: InventoryTransactionType.PURCHASE,
           quantity: fromMillis(row.quantity),
