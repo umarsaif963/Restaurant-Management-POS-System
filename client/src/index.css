@@ -8,7 +8,8 @@
   }
 
   body {
-    @apply bg-slate-100 text-slate-900;
+    @apply bg-slate-50 text-slate-900;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
   ::selection {
@@ -42,11 +43,11 @@
 
 @layer components {
   .input {
-    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25 focus:ring-offset-0;
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:ring-offset-0;
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .btn-primary {
@@ -66,7 +67,7 @@
   }
 
   .chip {
-    @apply inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600 shadow-sm transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700;
+    @apply inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-600 shadow-sm transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700;
   }
 
   .chip-active {
@@ -147,11 +148,15 @@
 /* App shell: global, non-breaking polish for the consistent table markup every
    page uses (header band, hover rows, tighter uppercase headings). */
 .app-shell thead th {
-  @apply whitespace-nowrap bg-slate-50/70 font-semibold text-slate-500;
+  @apply whitespace-nowrap bg-slate-50/80 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500;
 }
 
 .app-shell tbody tr {
-  @apply transition-colors duration-100 hover:bg-brand-50/40;
+  @apply transition-colors duration-100 hover:bg-brand-50/50;
+}
+
+.app-shell tbody td {
+  @apply text-slate-600;
 }
 
 @layer base {

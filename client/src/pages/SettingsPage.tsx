@@ -1,13 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Upload, UtensilsCrossed } from 'lucide-react';
 import type { SettingsView, UpdateSettingsInput } from '@restaurant/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { FormField } from '@/components/ui/FormField';
 import { Spinner } from '@/components/ui/Spinner';
 import { useGetSettingsQuery, useUpdateSettingsMutation } from '@/store/api/settingsApi';
+import { apiSlice } from '@/store/api/apiSlice';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { removeRestaurantIcon, writeRestaurantIcon } from '@/utils/restaurantIcon';
+import { useRestaurantIcon } from '@/hooks/useRestaurantIcon';
 import { extractApiError } from '@/services/api';
 import { useToast } from '@/hooks/useToast';
 
@@ -22,6 +27,23 @@ const OPENING_DAYS = [
 ] as const;
 
 type DayKey = (typeof OPENING_DAYS)[number]['key'];
+
+/**
+ * Opening hours are keyed by 3-letter day codes (`mon`, `tue`, …): the
+ * settings endpoint validates record keys at a maximum of 3 characters, while
+ * rows written by older data use full day names. Writes therefore always use
+ * the codes, and reads fall back from the full name to the code so both
+ * formats display correctly.
+ */
+const DAY_CODES: Record<DayKey, string> = {
+  monday: 'mon',
+  tuesday: 'tue',
+  wednesday: 'wed',
+  thursday: 'thu',
+  friday: 'fri',
+  saturday: 'sat',
+  sunday: 'sun',
+};
 
 const hourFields = Object.fromEntries(
   OPENING_DAYS.map((day) => [day.key, z.string().trim().max(60)]),
@@ -47,6 +69,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 function toFormValues(view: SettingsView): FormValues {
   const hours = view.settings.openingHours ?? {};
+  const dayValue = (day: DayKey): string => hours[day] ?? hours[DAY_CODES[day]] ?? '';
   return {
     name: view.restaurant.name,
     email: view.restaurant.email ?? '',
@@ -60,13 +83,13 @@ function toFormValues(view: SettingsView): FormValues {
     receiptFooter: view.settings.receiptFooter ?? '',
     showTaxOnReceipt: view.settings.showTaxOnReceipt,
     showServiceChargeOnReceipt: view.settings.showServiceChargeOnReceipt,
-    monday: hours.monday ?? '',
-    tuesday: hours.tuesday ?? '',
-    wednesday: hours.wednesday ?? '',
-    thursday: hours.thursday ?? '',
-    friday: hours.friday ?? '',
-    saturday: hours.saturday ?? '',
-    sunday: hours.sunday ?? '',
+    monday: dayValue('monday'),
+    tuesday: dayValue('tuesday'),
+    wednesday: dayValue('wednesday'),
+    thursday: dayValue('thursday'),
+    friday: dayValue('friday'),
+    saturday: dayValue('saturday'),
+    sunday: dayValue('sunday'),
   };
 }
 
@@ -87,13 +110,93 @@ function buildPayload(values: FormValues): UpdateSettingsInput {
       receiptFooter: values.receiptFooter === '' ? null : values.receiptFooter,
       showTaxOnReceipt: values.showTaxOnReceipt,
       showServiceChargeOnReceipt: values.showServiceChargeOnReceipt,
-      openingHours: Object.fromEntries(OPENING_DAYS.map((day) => [day.key, values[day.key]])),
+      // 3-letter day keys satisfy the endpoint's key validation; cleared days
+      // are omitted entirely because the endpoint rejects empty strings.
+      openingHours: Object.fromEntries(
+        OPENING_DAYS.filter((day) => values[day.key].trim() !== '').map((day) => [
+          DAY_CODES[day.key],
+          values[day.key].trim(),
+        ]),
+      ),
     },
   };
 }
 
+const MAX_ICON_BYTES = 5 * 1024 * 1024;
+const MAX_ICON_DIMENSION = 192;
+const MAX_ICON_CHARS = 512_000;
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Could not read that image file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('That image could not be opened.'));
+    image.src = src;
+  });
+}
+
+/**
+ * Turn a picked file into a small data URL for the sidebar logo: SVGs are kept
+ * as-is (they are already tiny and stay sharp), raster images are downscaled
+ * to at most 192px and compressed as WebP so the upload always fits comfortably
+ * in browser storage.
+ */
+async function buildIconDataUrl(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Choose an image file (PNG, JPG, WebP or SVG).');
+  }
+  if (file.size > MAX_ICON_BYTES) {
+    throw new Error('Images must be smaller than 5 MB.');
+  }
+  if (file.type === 'image/svg+xml') {
+    const dataUrl = await readAsDataUrl(file);
+    if (dataUrl.length > MAX_ICON_CHARS) {
+      throw new Error('That SVG is too large — keep it under 512 KB.');
+    }
+    return dataUrl;
+  }
+  const source = await readAsDataUrl(file);
+  const image = await loadImage(source);
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  if (!width || !height) {
+    throw new Error('That image has no usable size.');
+  }
+  const scale = Math.min(1, MAX_ICON_DIMENSION / Math.max(width, height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Image processing is not available in this browser.');
+  }
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  // WebP keeps transparency (logos) and compresses well below the cap; older
+  // browsers fall back to PNG inside toDataURL, which is fine too.
+  const dataUrl = canvas.toDataURL('image/webp', 0.85);
+  if (dataUrl.length > MAX_ICON_CHARS) {
+    throw new Error('That image is too heavy even after compression.');
+  }
+  return dataUrl;
+}
+
 export function SettingsPage() {
   const toast = useToast();
+  const dispatch = useAppDispatch();
+  const restaurantId = useAppSelector((state) => state.auth.user?.restaurantId);
+  const restaurantIcon = useRestaurantIcon(restaurantId);
+  const [iconBusy, setIconBusy] = useState(false);
+  const [iconError, setIconError] = useState<string | null>(null);
+  const iconInputRef = useRef<HTMLInputElement>(null);
   const { data, isLoading, isError, refetch } = useGetSettingsQuery();
   const [updateSettings, { isLoading: saving }] = useUpdateSettingsMutation();
 
@@ -113,10 +216,38 @@ export function SettingsPage() {
   async function onSubmit(values: FormValues) {
     try {
       await updateSettings(buildPayload(values)).unwrap();
+      // Refresh the session profile so the sidebar shows the saved restaurant
+      // name immediately instead of waiting for the next page load.
+      dispatch(apiSlice.util.invalidateTags(['Me']));
       toast.success('Settings saved', 'Restaurant settings have been updated.');
     } catch (error) {
       toast.error('Could not save settings', extractApiError(error).message);
     }
+  }
+
+  async function handleIconPick(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    // Reset so picking the same file again still fires a change event.
+    event.target.value = '';
+    if (!file || !restaurantId) return;
+    setIconBusy(true);
+    setIconError(null);
+    try {
+      const dataUrl = await buildIconDataUrl(file);
+      writeRestaurantIcon(restaurantId, dataUrl);
+      toast.success('Restaurant icon updated', 'It now appears in the sidebar.');
+    } catch (error) {
+      setIconError(error instanceof Error ? error.message : 'Could not process that image.');
+    } finally {
+      setIconBusy(false);
+    }
+  }
+
+  function handleIconRemove() {
+    if (!restaurantId) return;
+    removeRestaurantIcon(restaurantId);
+    setIconError(null);
+    toast.success('Restaurant icon removed', 'The default logo is back in the sidebar.');
   }
 
   if (isLoading) {
@@ -157,6 +288,59 @@ export function SettingsPage() {
       />
 
       <form id="settings-form" className="grid gap-5" onSubmit={handleSubmit(onSubmit)} noValidate>
+        {restaurantId && (
+          <Card title="Restaurant icon">
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                {restaurantIcon ? (
+                  <img
+                    src={restaurantIcon}
+                    alt="Current restaurant icon"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <UtensilsCrossed className="h-6 w-6 text-slate-400" />
+                )}
+              </span>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={iconBusy}
+                    onClick={() => iconInputRef.current?.click()}
+                  >
+                    {iconBusy ? <Spinner className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
+                    {restaurantIcon ? 'Replace icon' : 'Upload icon'}
+                  </button>
+                  {restaurantIcon && (
+                    <button
+                      type="button"
+                      className="btn-danger"
+                      disabled={iconBusy}
+                      onClick={handleIconRemove}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500">
+                  PNG, JPG, WebP or SVG up to&nbsp;5&nbsp;MB. It replaces the logo beside the
+                  restaurant name in the sidebar and is saved on this device.
+                </p>
+                {iconError && <p className="text-xs font-medium text-red-600">{iconError}</p>}
+              </div>
+            </div>
+            <input
+              ref={iconInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              aria-label="Upload restaurant icon"
+              onChange={handleIconPick}
+            />
+          </Card>
+        )}
         <Card title="Restaurant information">
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Restaurant name" htmlFor="s-name" error={errors.name?.message} required>
@@ -213,13 +397,13 @@ export function SettingsPage() {
             </FormField>
             <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
               <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" className="h-4 w-4 rounded border-slate-300" {...register('showTaxOnReceipt')} />
+                <input type="checkbox" className="checkbox" {...register('showTaxOnReceipt')} />
                 Show tax on receipts
               </label>
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300"
+                  className="checkbox"
                   {...register('showServiceChargeOnReceipt')}
                 />
                 Show service charge on receipts

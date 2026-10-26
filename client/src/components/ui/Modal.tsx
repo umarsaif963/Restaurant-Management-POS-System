@@ -49,7 +49,7 @@ export function Modal({
         className={`relative flex w-full animate-fade-in flex-col bg-white shadow-pop sm:max-h-[85vh] sm:animate-scale-in sm:rounded-2xl ${maxWidthClass}`}
       >
         <header className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h3 className="text-sm font-semibold tracking-tight text-slate-900">{title}</h3>
+          <h3 className="text-[15px] font-bold tracking-tight text-slate-900">{title}</h3>
           <button
             type="button"
             onClick={onClose}

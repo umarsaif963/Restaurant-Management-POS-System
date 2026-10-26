@@ -4,6 +4,7 @@ import type { Permission } from '@restaurant/shared';
 import { APP_NAME, APP_VERSION, NAV_SECTIONS, type NavSection } from '@/constants/routes';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { closeSidebar } from '@/store/slices/uiSlice';
+import { useRestaurantIcon } from '@/hooks/useRestaurantIcon';
 
 const ENV_LABEL = import.meta.env.DEV ? 'Development' : 'Production';
 
@@ -30,6 +31,8 @@ export function Sidebar() {
   const sidebarOpen = useAppSelector((state) => state.ui.sidebarOpen);
   const currentUser = useAppSelector((state) => state.auth.user);
   const sections = visibleSections(currentUser?.permissions);
+  const restaurantIcon = useRestaurantIcon(currentUser?.restaurantId);
+  const restaurantName = currentUser?.restaurantName?.trim() || APP_NAME;
 
   const handleNavigate = () => {
     dispatch(closeSidebar());
@@ -42,22 +45,35 @@ export function Sidebar() {
           type="button"
           aria-label="Close navigation"
           onClick={() => dispatch(closeSidebar())}
-          className="fixed inset-0 z-30 bg-slate-900/50 md:hidden"
+          className="fixed inset-0 z-30 bg-slate-950/50 md:hidden"
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-200 transition-transform md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-[264px] flex-col border-r border-slate-800/80 bg-slate-950 text-slate-200 transition-transform md:static md:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-16 items-center justify-between border-b border-slate-800/70 px-5">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-900/40">
-              <UtensilsCrossed className="h-4 w-4" />
-            </span>
-            <div className="leading-tight">
-              <p className="text-sm font-bold tracking-tight text-white">{APP_NAME}</p>
-              <p className="text-[11px] text-slate-400">v{APP_VERSION}</p>
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-800/80 px-4">
+          <div className="flex min-w-0 items-center gap-3">
+            {restaurantIcon ? (
+              <span className="flex h-9 w-9 shrink-0 items-center overflow-hidden rounded-xl bg-white ring-1 ring-white/10">
+                <img
+                  src={restaurantIcon}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  aria-hidden="true"
+                />
+              </span>
+            ) : (
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-lg shadow-brand-900/50 ring-1 ring-white/10">
+                <UtensilsCrossed className="h-4 w-4" />
+              </span>
+            )}
+            <div className="min-w-0 leading-tight">
+              <p className="truncate text-sm font-bold tracking-tight text-white" title={restaurantName}>
+                {restaurantName}
+              </p>
+              <p className="text-[11px] text-slate-500">v{APP_VERSION}</p>
             </div>
           </div>
           <button
@@ -70,13 +86,13 @@ export function Sidebar() {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
+        <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-5">
           {sections.map((section) => (
             <div key={section.title}>
-              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+              <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
                 {section.title}
               </p>
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 {section.items.map((item) => (
                   <li key={item.to}>
                     <NavLink
@@ -84,27 +100,27 @@ export function Sidebar() {
                       end={item.end}
                       onClick={handleNavigate}
                       className={({ isActive }) =>
-                        `group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                        `group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition ${
                           isActive
-                            ? 'bg-white/[0.07] text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]'
-                            : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-100'
+                            ? 'bg-white/[0.08] text-white'
+                            : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100'
                         }`
                       }
                     >
                       {({ isActive }) => (
                         <>
                           <span
-                            className={`absolute left-0 h-5 w-1 rounded-r-full bg-brand-400 transition-opacity ${
+                            className={`absolute -left-3 h-5 w-[3px] rounded-r-full bg-brand-400 transition-opacity ${
                               isActive ? 'opacity-100' : 'opacity-0'
                             }`}
                             aria-hidden="true"
                           />
                           <item.icon
                             className={`h-4 w-4 shrink-0 transition ${
-                              isActive ? 'text-brand-300' : 'text-slate-400 group-hover:text-brand-300'
+                              isActive ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300'
                             }`}
                           />
-                          {item.label}
+                          <span className="truncate">{item.label}</span>
                         </>
                       )}
                     </NavLink>
@@ -115,14 +131,14 @@ export function Sidebar() {
           ))}
         </nav>
 
-        <div className="border-t border-slate-800/70 px-5 py-4">
-          <p className="flex items-center gap-2 text-xs text-slate-500">
+        <div className="shrink-0 border-t border-slate-800/80 px-4 py-3.5">
+          <p className="flex items-center gap-2 text-[11px] text-slate-500">
             <span
               className={`h-1.5 w-1.5 rounded-full ${import.meta.env.DEV ? 'bg-amber-400' : 'bg-emerald-400'}`}
               aria-hidden="true"
             />
             <span>
-              Environment: <span className="font-medium text-slate-300">{ENV_LABEL}</span>
+              Environment: <span className="font-semibold text-slate-300">{ENV_LABEL}</span>
             </span>
           </p>
         </div>

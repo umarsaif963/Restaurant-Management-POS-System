@@ -93,15 +93,15 @@ export function ReportsPage() {
       />
 
       <Card>
-        <div className="flex flex-wrap items-end gap-4">
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
           <div>
-            <label htmlFor="report-from" className="mb-1 block text-xs font-medium text-slate-500">
+            <label htmlFor="report-from" className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">
               From
             </label>
             <input
               id="report-from"
               type="date"
-              className="input"
+              className="input w-auto"
               value={from}
               max={to}
               onChange={(event) => setFrom(event.target.value)}
@@ -109,13 +109,13 @@ export function ReportsPage() {
             />
           </div>
           <div>
-            <label htmlFor="report-to" className="mb-1 block text-xs font-medium text-slate-500">
+            <label htmlFor="report-to" className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">
               To
             </label>
             <input
               id="report-to"
               type="date"
-              className="input"
+              className="input w-auto"
               value={to}
               min={from}
               onChange={(event) => setTo(event.target.value)}
@@ -123,7 +123,7 @@ export function ReportsPage() {
             />
           </div>
           <div>
-            <label htmlFor="report-limit" className="mb-1 block text-xs font-medium text-slate-500">
+            <label htmlFor="report-limit" className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">
               Top items
             </label>
             <select
@@ -140,12 +140,15 @@ export function ReportsPage() {
               ))}
             </select>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <span className="hidden text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400 sm:block">
+              Quick range
+            </span>
             {PRESETS.map((preset) => (
               <button
                 key={preset.label}
                 type="button"
-                className="btn-secondary"
+                className="chip"
                 onClick={() => handlePreset(preset.days)}
               >
                 {preset.label}

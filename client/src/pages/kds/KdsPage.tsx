@@ -35,6 +35,14 @@ const COLUMNS: Column[] = [
   { key: 'served', label: 'Served', statuses: ['SERVED'] },
 ];
 
+/** Column heading accents, matched to the ticket accents below. */
+const COLUMN_ACCENT: Record<string, string> = {
+  waiting: 'bg-amber-400',
+  preparing: 'bg-sky-400',
+  ready: 'bg-brand-500',
+  served: 'bg-slate-300',
+};
+
 const MUTED_STATUSES: KitchenOrderStatus[] = ['COMPLETED', 'CANCELLED'];
 
 const TILE_ACCENT: Partial<Record<KitchenOrderStatus, string>> = {
@@ -56,6 +64,14 @@ function formatElapsed(createdAt: string, now: number): string {
   return `${m}m ${String(s).padStart(2, '0')}s`;
 }
 
+/** Warm up the elapsed clock as a ticket ages so old tickets stand out. */
+function elapsedTone(createdAt: string, now: number): string {
+  const minutes = Math.floor((now - new Date(createdAt).getTime()) / 60000);
+  if (minutes >= 20) return 'text-red-600';
+  if (minutes >= 10) return 'text-amber-600';
+  return 'text-slate-700';
+}
+
 function TicketTile({
   ticket,
   now,
@@ -74,16 +90,18 @@ function TicketTile({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-bold text-slate-900">
+            <h3 className="text-xl font-bold tracking-tight text-slate-900">
               {ticket.tableNumber !== null ? `T${String(ticket.tableNumber).padStart(2, '0')}` : ticket.orderNumber}
             </h3>
             <Badge variant={ORDER_TYPE_BADGE[ticket.orderType]}>{ORDER_TYPE_LABELS[ticket.orderType]}</Badge>
             <Badge variant="slate">ticket #{ticket.ticketNumber}</Badge>
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            {ticket.tableNumber !== null ? `Table ${String(ticket.tableNumber).padStart(2, '0')}` : ticket.customerName ?? 'Walk-in'}
-            {' · '}
-            <span className="font-mono font-semibold text-slate-700">{formatElapsed(ticket.createdAt, now)}</span>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
+            <span>{ticket.tableNumber !== null ? `Table ${String(ticket.tableNumber).padStart(2, '0')}` : ticket.customerName ?? 'Walk-in'}</span>
+            <span aria-hidden="true">·</span>
+            <span className={`font-mono text-sm font-bold ${elapsedTone(ticket.createdAt, now)}`}>
+              {formatElapsed(ticket.createdAt, now)}
+            </span>
           </p>
         </div>
       </div>
@@ -92,27 +110,29 @@ function TicketTile({
         <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">{ticket.notes}</p>
       )}
 
-      <ul className="mt-3 space-y-1.5">
+      <ul className="mt-3 space-y-2">
         {ticket.items.map((item) => (
-          <li key={item.id} className="flex items-baseline gap-2 text-sm">
-            <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-slate-900 px-1.5 font-bold text-slate-50">
+          <li key={item.id} className="flex items-baseline gap-2 text-[15px]">
+            <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-md bg-slate-900 px-2 font-bold text-slate-50">
               {item.quantity}
             </span>
-            <span className="font-medium text-slate-800">{item.name}</span>
+            <span className="font-semibold text-slate-800">{item.name}</span>
             {item.variant && <span className="text-xs text-slate-500">{item.variant}</span>}
             {item.notes && <span className="text-xs italic text-slate-400">“{item.notes}”</span>}
           </li>
         ))}
       </ul>
 
-      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
         {canOperate &&
           KITCHEN_NEXT[ticket.status].map((next) => (
             <button
               key={next}
               type="button"
               disabled={advancing}
-              className={next === 'CANCELLED' ? 'btn-danger px-3 py-1.5 text-xs' : 'btn-primary px-3 py-1.5 text-xs'}
+              className={`min-h-11 px-4 text-sm font-semibold ${
+                next === 'CANCELLED' ? 'btn-danger' : 'btn-primary'
+              }`}
               onClick={() => onAdvance(ticket.id, next)}
             >
               {KITCHEN_STATUS_LABELS[next]}
@@ -245,9 +265,12 @@ export function KdsPage() {
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           {COLUMNS.map((column) => (
             <section key={column.key}>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">{column.label}</h2>
-                <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-slate-600 shadow-sm">
+              <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl bg-white px-3.5 py-2.5 shadow-card ring-1 ring-slate-200/70">
+                <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-700">
+                  <span className={`h-2 w-2 rounded-full ${COLUMN_ACCENT[column.key] ?? 'bg-slate-300'}`} aria-hidden="true" />
+                  {column.label}
+                </h2>
+                <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-900 px-1.5 text-xs font-bold text-white">
                   {byColumn[column.key].length}
                 </span>
               </div>
@@ -263,7 +286,7 @@ export function KdsPage() {
                   />
                 ))}
                 {byColumn[column.key].length === 0 && (
-                  <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-400">
+                  <div className="rounded-xl border border-dashed border-slate-200 bg-white/60 px-4 py-8 text-center text-sm text-slate-400">
                     Nothing here
                   </div>
                 )}

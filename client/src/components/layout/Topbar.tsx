@@ -29,6 +29,11 @@ export function Topbar() {
   const activeItem = NAV_SECTIONS.flatMap((section) => section.items).find((item) =>
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),
   );
+  const activeSection = NAV_SECTIONS.find((section) =>
+    section.items.some((item) =>
+      item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),
+    ),
+  );
 
   async function handleLogout() {
     try {
@@ -40,8 +45,8 @@ export function Topbar() {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/70 bg-white/85 px-4 backdrop-blur md:px-6">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white px-4 md:px-6">
+      <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
           onClick={() => dispatch(toggleSidebar())}
@@ -50,23 +55,27 @@ export function Topbar() {
         >
           <Menu className="h-4 w-4" />
         </button>
-        <div>
-          <h2 className="text-sm font-semibold tracking-tight text-slate-900 md:text-base">
-            {activeItem?.label ?? APP_NAME}
+        <div className="min-w-0 leading-tight">
+          {activeSection && activeItem ? (
+            <p className="hidden text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:block">
+              {activeSection.title}
+            </p>
+          ) : null}
+          <h2 className="truncate text-sm font-bold tracking-tight text-slate-900 md:text-[15px]">
+            {activeItem?.label ?? (user?.restaurantName?.trim() || APP_NAME)}
           </h2>
-          <p className="hidden text-xs text-slate-500 sm:block">Restaurant Management &amp; POS</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         <Badge variant={import.meta.env.DEV ? 'blue' : 'green'}>{ENV_LABEL}</Badge>
         {user && (
           <div className="hidden items-center gap-2.5 sm:flex">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-semibold text-white shadow-sm shadow-brand-600/30">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white shadow-sm shadow-brand-600/30 ring-1 ring-brand-700/20">
               {initials(user.name)}
             </span>
             <div className="leading-tight">
-              <p className="text-sm font-medium text-slate-800">{user.name}</p>
+              <p className="text-sm font-semibold tracking-tight text-slate-800">{user.name}</p>
               <p className="text-[11px] text-slate-500">{ROLE_LABELS[user.role]}</p>
             </div>
           </div>
@@ -74,7 +83,7 @@ export function Topbar() {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-800"
+          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
           title="Sign out"
           disabled={loggingOut}
         >

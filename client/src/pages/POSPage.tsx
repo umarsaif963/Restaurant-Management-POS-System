@@ -498,10 +498,10 @@ export function POSPage() {
                       return (
                         <div
                           key={item.id}
-                          className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm text-slate-300"
+                          className="flex min-h-[7rem] flex-col rounded-xl border border-slate-200/80 bg-slate-50 p-3 text-sm text-slate-300"
                         >
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-xs">Unavailable</p>
+                          <p className="font-semibold text-slate-400">{item.name}</p>
+                          <p className="mt-auto text-xs font-medium uppercase tracking-wide">Unavailable</p>
                         </div>
                       );
                     }
@@ -511,27 +511,35 @@ export function POSPage() {
                       <button
                         key={item.id}
                         type="button"
-                        className="flex flex-col rounded-lg border border-slate-200 bg-white p-3 text-left text-sm transition hover:border-brand-300 hover:shadow-sm"
+                        className={`flex min-h-[7rem] flex-col rounded-xl border p-3 text-left text-sm transition active:scale-[0.99] ${
+                          soldOut
+                            ? 'border-slate-200 bg-slate-50/80'
+                            : 'border-slate-200 bg-white hover:border-brand-300 hover:shadow-lifted'
+                        }`}
                         onClick={() =>
                           hasOptions
                             ? setPicking(item)
                             : addLine({ menuItemId: item.id, quantity: 1, addOnIds: [] })
                         }
                       >
-                        <p className="font-medium text-slate-800">{item.name}</p>
-                        <p className="mt-1 text-brand-700">
+                        <p className={`font-semibold ${soldOut ? 'text-slate-400' : 'text-slate-800'}`}>
+                          {item.name}
+                        </p>
+                        <p className="mt-1 text-[15px] font-bold text-brand-700">
                           ${item.price}
-                          {hasOptions && (
-                            <span className="ml-2 text-xs font-normal text-slate-400">
+                          {hasOptions && !soldOut && (
+                            <span className="ml-2 text-xs font-medium text-slate-400">
                               Customize
                             </span>
                           )}
                         </p>
                         {soldOut ? (
-                          <p className="mt-1.5 text-xs font-medium text-red-600">Out of stock</p>
+                          <p className="mt-auto pt-1.5 text-xs font-semibold uppercase tracking-wide text-red-500">
+                            Out of stock
+                          </p>
                         ) : stock.remaining !== null ? (
-                          <p className="mt-1.5 text-xs text-slate-500">
-                            {stock.remaining} left
+                          <p className="mt-auto pt-1.5 text-xs text-slate-500">
+                            <span className="font-semibold text-slate-600">{stock.remaining} left</span>
                             {stock.limitedBy && (
                               <span className="text-slate-400"> · {stock.limitedBy.name}</span>
                             )}
@@ -626,7 +634,7 @@ export function POSPage() {
                 const increaseDisabled = atStockLimit || atMax;
                 const limitMessage = describeCartLimit(lineAvailability);
                 return (
-                  <li key={line.key} className="rounded-lg border border-slate-100 p-2.5">
+                  <li key={line.key} className="rounded-xl border border-slate-200/70 p-3 shadow-sm">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-medium text-slate-800">
                         {line.quantity} × {line.name}
@@ -652,16 +660,19 @@ export function POSPage() {
                     <div className="mt-2 flex items-center gap-2">
                       <button
                         type="button"
-                        className="btn-secondary px-2 py-1"
+                        className="btn-secondary min-h-9 px-2.5"
                         disabled={line.quantity <= 1}
                         onClick={() => changeQuantity(line.key, -1)}
                         aria-label="Decrease quantity"
                       >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
+                      <span className="min-w-8 text-center text-sm font-bold text-slate-800">
+                        {line.quantity}
+                      </span>
                       <button
                         type="button"
-                        className="btn-secondary px-2 py-1"
+                        className="btn-secondary min-h-9 px-2.5"
                         disabled={increaseDisabled}
                         onClick={() => changeQuantity(line.key, 1)}
                         aria-label="Increase quantity"
@@ -677,7 +688,7 @@ export function POSPage() {
                       </button>
                       <button
                         type="button"
-                        className="ml-auto rounded p-1 text-slate-300 transition hover:bg-red-50 hover:text-red-600"
+                        className="ml-auto rounded-lg p-2 text-slate-300 transition hover:bg-red-50 hover:text-red-600"
                         onClick={() => removeLine(line.key)}
                         aria-label={`Remove ${line.name}`}
                       >
@@ -706,30 +717,30 @@ export function POSPage() {
                 />
               </div>
 
-              <div className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-sm">
+              <div className="mt-4 space-y-1.5 rounded-xl bg-slate-50 p-3.5 text-sm ring-1 ring-slate-100">
                 <div className="flex justify-between text-slate-500">
                   <span>Subtotal</span>
-                  <span>${(totals.subtotal / 100).toFixed(2)}</span>
+                  <span className="font-medium text-slate-700">${(totals.subtotal / 100).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-slate-500">
                   <span>Tax</span>
-                  <span>${(totals.tax / 100).toFixed(2)}</span>
+                  <span className="font-medium text-slate-700">${(totals.tax / 100).toFixed(2)}</span>
                 </div>
                 {Number(serviceChargePct) > 0 && orderType === 'DINE_IN' && (
                   <div className="flex justify-between text-slate-500">
                     <span>Service charge ({serviceChargePct}%)</span>
-                    <span>${(totals.service / 100).toFixed(2)}</span>
+                    <span className="font-medium text-slate-700">${(totals.service / 100).toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between pt-2 text-base font-semibold text-slate-800">
+                <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-2.5 text-base font-bold text-slate-900">
                   <span>Total</span>
-                  <span>${(totals.total / 100).toFixed(2)}</span>
+                  <span className="tracking-tight">${(totals.total / 100).toFixed(2)}</span>
                 </div>
               </div>
 
               <button
                 type="button"
-                className="btn-primary mt-4 w-full"
+                className="btn-primary mt-4 min-h-12 w-full text-base"
                 disabled={!canPlace}
                 onClick={placeOrder}
               >

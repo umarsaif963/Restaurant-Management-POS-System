@@ -172,33 +172,35 @@ export function OrdersPage() {
                     <th className="px-3 sm:px-4 py-3"><span className="sr-only">Open</span></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-100">
                   {data?.items.map((order) => (
-                    <tr key={order.id} className="text-slate-700 transition hover:bg-slate-50/70">
-                      <td className="px-3 sm:px-4 py-3 font-medium text-slate-900">{order.orderNumber}</td>
-                      <td className="px-3 sm:px-4 py-3">
+                    <tr key={order.id} className="text-slate-700 transition hover:bg-brand-50/50">
+                      <td className="px-3 sm:px-4 py-3.5 font-bold tracking-tight text-slate-900">{order.orderNumber}</td>
+                      <td className="px-3 sm:px-4 py-3.5">
                         <Badge variant={ORDER_TYPE_BADGE[order.orderType]}>
                           {ORDER_TYPE_LABELS[order.orderType]}
                         </Badge>
                       </td>
-                      <td className="px-3 sm:px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3.5">
                         <Badge variant={ORDER_STATUS_BADGE[order.status]}>
                           {ORDER_STATUS_LABELS[order.status]}
                         </Badge>
                       </td>
-                      <td className="px-3 sm:px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3.5">
                         <Badge variant={PAYMENT_STATUS_BADGE[order.paymentStatus]}>
                           {PAYMENT_STATUS_LABELS[order.paymentStatus]}
                         </Badge>
                       </td>
-                      <td className="px-3 sm:px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3.5">
                         {order.orderType === 'DINE_IN' && order.tableNumber !== null
                           ? `Table ${String(order.tableNumber).padStart(2, '0')}`
                           : order.customerName ?? '—'}
                       </td>
-                      <td className="px-3 sm:px-4 py-3">{order.items.length}</td>
-                      <td className="px-3 sm:px-4 py-3 font-semibold text-slate-900">${order.grandTotal}</td>
-                      <td className="px-3 sm:px-4 py-3 text-xs text-slate-500">
+                      <td className="px-3 sm:px-4 py-3.5">{order.items.length}</td>
+                      <td className="px-3 sm:px-4 py-3.5 font-bold tabular-nums text-slate-900">
+                        ${order.grandTotal}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3.5 text-xs text-slate-500">
                         {new Date(order.createdAt).toLocaleString(undefined, {
                           month: 'short',
                           day: '2-digit',
@@ -206,10 +208,10 @@ export function OrdersPage() {
                           minute: '2-digit',
                         })}
                       </td>
-                      <td className="px-3 sm:px-4 py-3 text-right">
+                      <td className="px-3 sm:px-4 py-3.5 text-right">
                         <button
                           type="button"
-                          className="rounded p-1.5 text-slate-400 transition hover:bg-brand-50 hover:text-brand-700"
+                          className="rounded-lg p-2 text-slate-400 transition hover:bg-brand-50 hover:text-brand-700"
                           onClick={() => setActiveId(order.id)}
                           aria-label={`Open order ${order.orderNumber}`}
                         >

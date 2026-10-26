@@ -26,6 +26,17 @@ const PAGE_SIZE = 50;
 
 const ALL_KITCHEN_STATUSES = ['PENDING', 'ACCEPTED', 'PREPARING', 'READY', 'SERVED', 'COMPLETED', 'CANCELLED'] as const;
 
+/** Left accent per ticket status so the board reads at a glance. */
+const TICKET_ACCENT: Record<KitchenOrderStatus, string> = {
+  PENDING: 'border-l-amber-400',
+  ACCEPTED: 'border-l-amber-400',
+  PREPARING: 'border-l-sky-400',
+  READY: 'border-l-brand-500',
+  SERVED: 'border-l-slate-300',
+  COMPLETED: 'border-l-slate-200',
+  CANCELLED: 'border-l-red-300',
+};
+
 export function KitchenOrdersPage() {
   const toast = useToast();
   const currentUser = useAppSelector((state) => state.auth.user);
@@ -114,11 +125,11 @@ export function KitchenOrdersPage() {
           <>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {data?.items.map((ticket) => (
-                <Card key={ticket.id} className="border-l-4 !border-l-brand-500">
+                <Card key={ticket.id} className={`border-l-4 ${TICKET_ACCENT[ticket.status] ?? 'border-l-slate-300'}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-semibold text-slate-900">
+                        <h3 className="text-base font-bold tracking-tight text-slate-900">
                           {ticket.orderNumber}
                           {ticket.ticketNumber > 1 && (
                             <span className="ml-1 text-xs font-medium text-slate-400">
@@ -126,13 +137,12 @@ export function KitchenOrdersPage() {
                             </span>
                           )}
                         </h3>
-                        <Badge variant={ORDER_TYPE_BADGE[ticket.orderType]}>
-                          {ORDER_TYPE_LABELS[ticket.orderType]}
-                        </Badge>
                         <Badge variant={KITCHEN_STATUS_BADGE[ticket.status]}>
                           {KITCHEN_STATUS_LABELS[ticket.status]}
                         </Badge>
-                        <Badge variant="slate">{ORDER_STATUS_LABELS[ticket.orderStatus]}</Badge>
+                        <Badge variant={ORDER_TYPE_BADGE[ticket.orderType]}>
+                          {ORDER_TYPE_LABELS[ticket.orderType]}
+                        </Badge>
                       </div>
                       <p className="mt-1 text-xs text-slate-500">
                         {ticket.tableNumber !== null
@@ -146,6 +156,8 @@ export function KitchenOrdersPage() {
                           minute: '2-digit',
                         })}
                         {ticket.acceptedByName && ` · accepted by ${ticket.acceptedByName}`}
+                        {' · order '}
+                        <span className="text-slate-400">{ORDER_STATUS_LABELS[ticket.orderStatus].toLowerCase()}</span>
                       </p>
                     </div>
                     <div className="flex shrink-0 gap-2">
@@ -171,8 +183,10 @@ export function KitchenOrdersPage() {
                   <ul className="mt-3 space-y-1.5">
                     {ticket.items.map((item) => (
                       <li key={item.id} className="flex items-baseline gap-2 text-sm">
-                        <span className="font-semibold text-slate-800">{item.quantity}×</span>
-                        <span className="font-medium text-slate-800">{item.name}</span>
+                        <span className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md bg-slate-900 px-1.5 text-xs font-bold text-slate-50">
+                          {item.quantity}
+                        </span>
+                        <span className="font-semibold text-slate-800">{item.name}</span>
                         {item.variant && <span className="text-xs text-slate-500">{item.variant}</span>}
                         {item.notes && <span className="text-xs italic text-slate-400">“{item.notes}”</span>}
                         <span className="ml-auto shrink-0">
