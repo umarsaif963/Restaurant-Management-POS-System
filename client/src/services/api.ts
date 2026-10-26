@@ -91,18 +91,32 @@ apiClient.interceptors.response.use(
   },
 );
 
+function composeMessage(message: string, errors?: { message?: string }[]): string {
+  if (!errors || errors.length === 0) return message;
+  const details = errors.map((entry) => entry.message).filter(Boolean);
+  return details.length > 0 ? `${message} ${details.join(' ')}`.trim() : message;
+}
+
 export function extractApiError(error: unknown): { message: string; status?: number } {
   if (axios.isAxiosError<ApiResponse<never>>(error)) {
     const data = error.response?.data;
-    let message = data?.message ?? error.message;
-    const errors = data?.errors;
-    if (errors && errors.length > 0) {
-      const details = errors.map((entry) => entry.message).filter(Boolean);
-      if (details.length > 0) {
-        message = `${message} ${details.join(' ')}`.trim();
-      }
+    return {
+      message: composeMessage(data?.message ?? error.message, data?.errors),
+      status: error.response?.status,
+    };
+  }
+  // RTK Query's `unwrap()` rejects with the base query's typed payload
+  // ({ status, message, errors }) — a plain object. Without this branch every
+  // API failure caught after `unwrap()` degraded to a generic "Unexpected
+  // error", hiding the server's actual validation message.
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const payload = error as { status?: number; message?: string; errors?: { message?: string }[] };
+    if (typeof payload.message === 'string') {
+      return {
+        message: composeMessage(payload.message, payload.errors),
+        status: payload.status,
+      };
     }
-    return { message, status: error.response?.status };
   }
   return { message: error instanceof Error ? error.message : 'Unexpected error' };
 }

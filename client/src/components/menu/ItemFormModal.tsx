@@ -245,12 +245,15 @@ export function ItemFormModal({ open, item, categories, onClose }: ItemFormModal
     const scalars = {
       name: values.name,
       price: values.price,
-      sku: values.sku === '' ? null : values.sku,
+      // The API accepts strings and turns `''` into null itself (unique SKU,
+      // cleared description/image); sending null is rejected with 422.
+      sku: values.sku,
       categoryId: values.categoryId,
       taxRate: values.taxRate,
+      // preparationTime is explicitly nullable on the server.
       preparationTime: values.preparationTime === '' ? null : Number(values.preparationTime),
-      description: values.description === '' ? null : values.description,
-      imageUrl: values.imageUrl === '' ? null : values.imageUrl,
+      description: values.description,
+      imageUrl: values.imageUrl,
       position: Number(values.position) || 0,
       available: values.available,
     };

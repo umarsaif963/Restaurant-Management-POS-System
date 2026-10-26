@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { X, UtensilsCrossed } from 'lucide-react';
 import type { Permission } from '@restaurant/shared';
-import { APP_NAME, APP_VERSION, NAV_SECTIONS, type NavSection } from '@/constants/routes';
+import { APP_NAME, NAV_SECTIONS, type NavSection } from '@/constants/routes';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { closeSidebar } from '@/store/slices/uiSlice';
 import { useRestaurantIcon } from '@/hooks/useRestaurantIcon';
@@ -73,7 +73,6 @@ export function Sidebar() {
               <p className="truncate text-sm font-bold tracking-tight text-white" title={restaurantName}>
                 {restaurantName}
               </p>
-              <p className="text-[11px] text-slate-500">v{APP_VERSION}</p>
             </div>
           </div>
           <button

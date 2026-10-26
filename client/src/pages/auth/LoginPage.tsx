@@ -7,7 +7,6 @@ import { AuthShell } from '@/components/auth/AuthShell';
 import { FormField } from '@/components/ui/FormField';
 import { Spinner } from '@/components/ui/Spinner';
 import { useGetMeQuery, useLoginMutation } from '@/store/api/authApi';
-import { extractApiError } from '@/services/api';
 import { useToast } from '@/hooks/useToast';
 
 const loginSchema = z.object({
@@ -19,6 +18,32 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 interface LoginLocationState {
   from?: { pathname?: string };
+}
+
+/**
+ * Map a failed login attempt to an inline form message. Login failures never
+ * toast — the rejection is the typed payload from `axiosBaseQuery`, where
+ * `status: 0` means the request never reached the server (offline, connection
+ * refused, DNS failure or timeout), so network, credential and server failures
+ * are classified by HTTP status instead of falling through to a generic error.
+ */
+function loginErrorMessage(error: unknown): string {
+  const payload = (typeof error === 'object' && error !== null ? error : {}) as {
+    status?: number;
+    message?: string;
+  };
+  if (!payload.status) {
+    return 'Unable to connect to the server. Please check your internet connection and try again.';
+  }
+  if (payload.status === 401) {
+    return 'Incorrect email or password.';
+  }
+  if (payload.status >= 500) {
+    return 'Server error. Please try again later.';
+  }
+  // Other 4xx responses carry a meaningful message (e.g. a suspended
+  // restaurant); surface it rather than a generic "Unexpected error".
+  return payload.message?.trim() || 'Unable to sign in. Please try again.';
 }
 
 export function LoginPage() {
@@ -38,14 +63,17 @@ export function LoginPage() {
   const from = state?.from?.pathname ?? '/app';
 
   async function onSubmit(values: LoginFormValues) {
+    // Clear any inline error left over from a previous failed attempt.
     setFormError(null);
     try {
       await login(values).unwrap();
+      // Success is the only login event that produces a toast; the Toaster
+      // mounts with the app layout, so it appears right after navigation.
+      setFormError(null);
+      toast.success('Login successful', 'Welcome back.');
       navigate(from, { replace: true });
     } catch (error) {
-      const { message } = extractApiError(error);
-      setFormError(message);
-      toast.error('Login failed', message);
+      setFormError(loginErrorMessage(error));
     }
   }
 

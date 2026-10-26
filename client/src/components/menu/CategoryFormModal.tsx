@@ -58,7 +58,9 @@ export function CategoryFormModal({ open, category, onClose }: CategoryFormModal
   async function onSubmit(values: CategoryFormValues) {
     const payload = {
       name: values.name,
-      description: values.description === '' ? null : values.description,
+      // The API accepts a string here and turns `''` into null itself; sending
+      // null is rejected with 422, so empty descriptions stay as `''`.
+      description: values.description,
       position: Number(values.position) || 0,
     };
     try {
